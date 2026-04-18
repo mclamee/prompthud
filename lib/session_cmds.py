@@ -233,6 +233,21 @@ def _debug_log(msg: str) -> None:
 
 SAFETY_MARGIN = 6  # Claude Code's statusline area appears narrower than tty
 
+# ANSI "clear to end of line" — ensures each redraw overwrites every column
+# up to the cursor so stale glyphs from the previous render (e.g. a digit
+# from a shorter count) don't leak into the new render. Without this the
+# HUD would briefly show "689" between "68" and "69" while the host UI
+# reflowed a width-changing line.
+CLEAR_EOL = "\033[K"
+
+
+def _print_hud_line(line: str, total_width: int) -> None:
+    """Right-pad to the visible width so every column gets overwritten, then
+    clear-to-end-of-line as belt and braces. Safe against ANSI escapes since
+    padding is computed from visible cell width."""
+    pad = max(0, total_width - _visual_width(line))
+    sys.stdout.write(f"{RESET}{line}{' ' * pad}{CLEAR_EOL}\n")
+
 
 # Collapsed run: (last_ts, text, last_1based_num, run_count)
 Run = Tuple[int, str, int, int]
@@ -585,9 +600,9 @@ def cmd_render(args: argparse.Namespace) -> int:
     lines_env = os.environ.get("PROMPTHUD_LINES", args.lines)
     if _should_two_line(lines_env, cmds, width, args.max_cmd_width):
         for line in _pack_cmds_two_line(cmds, max_width=width, max_cmd_width=args.max_cmd_width):
-            print(line)
+            _print_hud_line(line, width)
     else:
-        print(_pack_cmds_into_width(cmds, max_width=width, max_cmd_width=args.max_cmd_width))
+        _print_hud_line(_pack_cmds_into_width(cmds, max_width=width, max_cmd_width=args.max_cmd_width), width)
     return 0
 
 
@@ -626,15 +641,15 @@ def cmd_statusline(args: argparse.Namespace) -> int:
             parts.append(f"{YELLOW}{project}{RESET}")
         if isinstance(ctx_pct, (int, float)):
             parts.append(f"{DIM}ctx{RESET} {_context_bar(float(ctx_pct))} {GREEN}{int(ctx_pct)}%{RESET}")
-        print(f"{RESET}{' │ '.join(parts)}")
+        _print_hud_line(" │ ".join(parts), width)
 
     if cmds:
         if _should_two_line(args.lines, cmds, width, args.max_cmd_width):
             for line in _pack_cmds_two_line(cmds, max_width=width, max_cmd_width=args.max_cmd_width):
-                print(f"{RESET}{line}")
+                _print_hud_line(line, width)
         else:
             line = _pack_cmds_into_width(cmds, max_width=width, max_cmd_width=args.max_cmd_width)
-            print(f"{RESET}{line}")
+            _print_hud_line(line, width)
     return 0
 
 
