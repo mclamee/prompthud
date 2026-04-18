@@ -52,8 +52,9 @@ def build_statusline_command(env_prefix: str = "") -> str:
         " if [ -n \"$plug\" ]; then "
         f"{env_prefix}bash \"${{plug}}scripts/statusline-wrapper.sh\";"
         " elif [ -n \"$PROMPTHUD_DEBUG\" ]; then "
-        "echo \"prompthud: plugin cache glob missed under $cdir/plugins/cache/*/prompthud/\" "
-        ">> /tmp/prompthud-debug.log 2>/dev/null;"
+        "mkdir -p \"$cdir/prompthud\" 2>/dev/null;"
+        " echo \"prompthud: plugin cache glob missed under $cdir/plugins/cache/*/prompthud/\" "
+        ">> \"$cdir/prompthud/debug.log\" 2>/dev/null;"
         " fi'"
     )
 

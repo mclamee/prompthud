@@ -8,7 +8,7 @@
 # Display env vars:
 #   PROMPTHUD_LINES    1|2|auto   Force cmds row count (default: auto)
 #   PROMPTHUD_COMPACT  1          Drop model/git/ctx header row
-#   PROMPTHUD_DEBUG    1          Log diagnostics to /tmp/prompthud-debug.log
+#   PROMPTHUD_DEBUG    1          Log diagnostics to $CLAUDE_CONFIG_DIR/prompthud/debug.log
 set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -16,7 +16,9 @@ PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CLI="$PLUGIN_ROOT/bin/session-cmds"
 LINES_ARG="${PROMPTHUD_LINES:-auto}"
 
-DEBUG_LOG=/tmp/prompthud-debug.log
+CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+DEBUG_LOG="$CLAUDE_DIR/prompthud/debug.log"
+mkdir -p "$CLAUDE_DIR/prompthud" 2>/dev/null || true
 dbg() {
     [ -n "${PROMPTHUD_DEBUG:-}" ] && printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" >> "$DEBUG_LOG"
     return 0

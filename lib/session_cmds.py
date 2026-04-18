@@ -218,10 +218,14 @@ def _truncate_to_width(text: str, max_cells: int) -> str:
     return out + "\u2026"
 
 
+DEBUG_LOG = os.path.join(LOG_DIR, "debug.log")
+
+
 def _debug_log(msg: str) -> None:
     if os.environ.get("PROMPTHUD_DEBUG"):
         try:
-            with open("/tmp/prompthud-debug.log", "a") as f:
+            os.makedirs(LOG_DIR, exist_ok=True)
+            with open(DEBUG_LOG, "a") as f:
                 f.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
         except OSError:
             pass

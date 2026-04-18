@@ -49,7 +49,7 @@ Set as env-prefix on the statusLine command in `~/.claude/settings.json`:
 
 - `PROMPTHUD_LINES=1|2|auto` — force cmds row count (default `auto`: long prompts go two-line)
 - `PROMPTHUD_COMPACT=1` — drop model/git/ctx header row, keep only the cmds row
-- `PROMPTHUD_DEBUG=1` — log diagnostics to `/tmp/prompthud-debug.log`
+- `PROMPTHUD_DEBUG=1` — log diagnostics to `$CLAUDE_CONFIG_DIR/prompthud/debug.log` (defaults to `~/.claude/prompthud/debug.log`)
 
 `/prompthud:setup` preserves any of the above env-prefix you had set, so re-running it keeps your config.
 
