@@ -1,17 +1,38 @@
 # prompthud
 
-**HUD overlay for every prompt you sent in the current Claude Code session.**
-Highlights the live one with `▶`, lets you browse history without scrolling the chat.
+**Know every Claude Code session at a glance.**
+A compact HUD overlay that pins every prompt you've sent in the current session to
+the statusline — live one marked with `▶`, interrupted ones marked `✗`, the one
+Claude is still thinking about marked `⋯`.
 
-## Why
+## Why: the session-switching problem
 
-Claude Code sessions run long. 20 prompts in, you forget what you asked 10 minutes ago,
-and scrolling back through streamed responses is painful. `prompthud` puts a compact
-strip at the bottom of the terminal:
+You're juggling 3-5 Claude Code windows — one refactoring auth, one writing tests,
+one stuck on a cookie bug. You Cmd-Tab into a window five minutes later and have
+to ask yourself: *"wait, which task was this one on? did I interrupt it? is it
+still thinking?"* You scroll up through streamed responses to rebuild context.
+Do that every tab-switch and it eats 15 minutes a day.
+
+`prompthud` makes that free. One glance at the bottom of any window tells you
+exactly where that session stands:
+
+```
+☰ 6 (+1 more) | 2.add jwt r… | 4.why is cookie not being s… ×2 | ✗5.[Image] debug token race | ▶ 6.continue ⋯
+```
+
+Reading left-to-right:
+- **`☰ 6`** — six prompts this session · **`(+1 more)`** — one older prompt folded off the left
+- **`4.… ×2`** — you asked the cookie question twice (consecutive duplicate, folded)
+- **`✗5.…`** — prompt 5 was interrupted before Claude finished
+- **`▶ 6.continue`** — the live prompt · **`⋯`** — Claude is still thinking, no output yet
+
+No scrolling the chat. No remembering. Just glance.
+
+### Full statusline view (with model / git / ctx)
 
 ```
 [Opus 4.7] │ dora git:(main*) │ ctx ████ 41%
-☰ 27 (+23 more) | 24.fix login bug | 25.add cache | 26.refactor auth | ▶ 27.write tests
+☰ 10 (+3 more) | 7.debug token rotation… ×3 | 8.add remember-me checkbox | 9./test | ▶ 10./commit ⋯
 ```
 
 ## Install
@@ -23,8 +44,10 @@ strip at the bottom of the terminal:
 /reload-plugins
 ```
 
-That's it. The `/prompthud:setup` command writes a glob-based statusline command so
-plugin upgrades don't break the path.
+Two steps: register the marketplace, then install from it. `/prompthud:setup` writes a
+glob-based statusline command so plugin upgrades don't break the path.
+
+[▶ 28s demo video](https://github.com/mclamee/prompthud/releases/latest)
 
 ## Commands
 
