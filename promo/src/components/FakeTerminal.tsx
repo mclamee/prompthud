@@ -47,8 +47,13 @@ const LINES_PER_SEC = 5.5; // matches 1.1 prompts/s × ~5 lines each
 // ──────────────────────────────────────────────────────────────────────────
 // HUD packing (real prompthud behaviour)
 // ──────────────────────────────────────────────────────────────────────────
-const HUD_TARGET_CHARS = 140;
-const MAX_CMD_CHARS = 30;
+// Budget calibration at fontSize 24 in a JetBrains Mono / Menlo fallback:
+//   container: 1920 − 160 (outer inset) − 60 (HUD padding) = 1700 px
+//   char:     24 × ~0.6 em ≈ 14.4 px → 1700 / 14.4 ≈ 118 chars max
+// Use 108 for a safety buffer — some glyphs (e.g. ×, ▶) render slightly
+// wider than a plain ASCII cell on macOS.
+const HUD_TARGET_CHARS = 108;
+const MAX_CMD_CHARS = 26;
 
 type Run = { lastIdx: number; text: string; count: number };
 
