@@ -25,32 +25,17 @@ export const Demo: React.FC = () => {
         <FakeTerminal />
       )}
 
-      {/* Scripted callouts — tweak the timing/positions to land on the moments in your recording. */}
-      <Sequence from={FPS * 4} durationInFrames={FPS * 5}>
-        <Callout
-          text="▶ marks the live prompt"
-          anchorX={0.55}
-          anchorY={0.82}
-          direction="up"
-        />
+      {/* Scripted callouts — compressed to land on moments in a 15s demo. */}
+      <Sequence from={FPS * 2} durationInFrames={FPS * 3}>
+        <Callout text="▶ live prompt" anchorX={0.55} anchorY={0.82} direction="up" />
       </Sequence>
 
-      <Sequence from={FPS * 12} durationInFrames={FPS * 5}>
-        <Callout
-          text="Scroll-free history: last 20 prompts, always visible"
-          anchorX={0.3}
-          anchorY={0.82}
-          direction="up"
-        />
+      <Sequence from={FPS * 6} durationInFrames={FPS * 3}>
+        <Callout text="full history, no scroll" anchorX={0.3} anchorY={0.82} direction="up" />
       </Sequence>
 
-      <Sequence from={FPS * 22} durationInFrames={FPS * 6}>
-        <Callout
-          text="×N folds consecutive duplicates"
-          anchorX={0.45}
-          anchorY={0.82}
-          direction="up"
-        />
+      <Sequence from={FPS * 10} durationInFrames={FPS * 3}>
+        <Callout text="×N folds duplicates" anchorX={0.45} anchorY={0.82} direction="up" />
       </Sequence>
     </AbsoluteFill>
   );

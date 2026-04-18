@@ -50,13 +50,24 @@ Or render a single scene:
 npx remotion render TitleCard out/title.mp4
 ```
 
-## Scene layout (60s total)
+## Scene layout (20.5s total)
 
 | From | Duration | Scene | What happens |
 |------|----------|-------|--------------|
-| 0s | 4s | `TitleCard` | Logo fade-in + tagline |
-| 4s | 35s | `Demo` | Real/fake terminal with animated callouts |
-| 39s | 6s | `CTA` | Install command + GitHub URL |
+| 0s | 2.5s | `TitleCard` | Logo fade-in + tagline |
+| 2.5s | 15s | `Demo` | Real/fake terminal with 3 animated callouts |
+| 17.5s | 3s | `CTA` | Install command + GitHub URL |
+
+## Background music (optional)
+
+Drop a loopable track at `public/music.mp3`, then flip `HAS_MUSIC = true`
+in `src/Main.tsx`. The track auto-fades in (0.5s) and out (1s).
+
+Free sources:
+- [pixabay.com/music](https://pixabay.com/music/) — filter by genre "tech / ambient"
+- [chosic.com/free-music/all](https://www.chosic.com/free-music/all/) — good lofi / minimal
+- [YouTube Audio Library](https://studio.youtube.com/channel/UC.../music) — sign in with any Google account
+- [uppbeat.io](https://uppbeat.io/) — free with attribution
 
 ## Asset checklist
 

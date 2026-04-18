@@ -21,8 +21,9 @@ export const FakeTerminal: React.FC = () => {
   const frame = useCurrentFrame();
   const { durationInFrames, fps } = useVideoConfig();
 
-  // Reveal one new past prompt per second; keep the last one live.
-  const visibleCount = Math.min(PROMPTS.length, 1 + Math.floor(frame / fps));
+  // Reveal prompts faster (~2.5/s) so all 10 appear in ~4s of the 15s demo.
+  const revealPerFrame = 2.5 / fps;
+  const visibleCount = Math.min(PROMPTS.length, 1 + Math.floor(frame * revealPerFrame));
   const visible = PROMPTS.slice(0, visibleCount);
   const past = visible.slice(0, -1);
   const current = visible[visible.length - 1] ?? "";

@@ -4,10 +4,10 @@ export const TitleCard: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const titleY = spring({ frame, fps, config: { damping: 14 }, from: 40, to: 0 });
-  const titleOpacity = interpolate(frame, [0, 20], [0, 1], { extrapolateRight: "clamp" });
-  const tagY = spring({ frame: frame - 10, fps, config: { damping: 14 }, from: 30, to: 0 });
-  const tagOpacity = interpolate(frame, [10, 30], [0, 1], { extrapolateRight: "clamp" });
+  const titleY = spring({ frame, fps, config: { damping: 12 }, from: 30, to: 0 });
+  const titleOpacity = interpolate(frame, [0, 12], [0, 1], { extrapolateRight: "clamp" });
+  const tagY = spring({ frame: frame - 6, fps, config: { damping: 12 }, from: 20, to: 0 });
+  const tagOpacity = interpolate(frame, [6, 18], [0, 1], { extrapolateRight: "clamp" });
 
   return (
     <AbsoluteFill

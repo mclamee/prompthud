@@ -4,9 +4,9 @@ export const CTA: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const cmdScale = spring({ frame, fps, config: { damping: 16 }, from: 0.85, to: 1 });
-  const cmdOpacity = interpolate(frame, [0, 15], [0, 1], { extrapolateRight: "clamp" });
-  const repoOpacity = interpolate(frame, [25, 45], [0, 1], { extrapolateRight: "clamp" });
+  const cmdScale = spring({ frame, fps, config: { damping: 14 }, from: 0.85, to: 1 });
+  const cmdOpacity = interpolate(frame, [0, 10], [0, 1], { extrapolateRight: "clamp" });
+  const repoOpacity = interpolate(frame, [14, 28], [0, 1], { extrapolateRight: "clamp" });
 
   return (
     <AbsoluteFill
