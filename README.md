@@ -1,34 +1,18 @@
 # prompthud
 
 **Know every Claude Code session at a glance.**
-A compact HUD overlay that pins every prompt you've sent in the current session to
-the statusline — live one marked with `▶`, interrupted ones marked `✗`, the one
-Claude is still thinking about marked `⋯`.
 
-## Why: the session-switching problem
+<video src="https://github.com/mclamee/prompthud/releases/download/v0.3.0/prompthud-promo.mp4" controls muted loop width="100%">
+  Your browser can't play the inline video —
+  <a href="https://github.com/mclamee/prompthud/releases/latest">download the 28s promo</a>.
+</video>
 
-You're juggling 3-5 Claude Code windows — one refactoring auth, one writing tests,
-one stuck on a cookie bug. You Cmd-Tab into a window five minutes later and have
-to ask yourself: *"wait, which task was this one on? did I interrupt it? is it
-still thinking?"* You scroll up through streamed responses to rebuild context.
-Do that every tab-switch and it eats 15 minutes a day.
+## Why
 
-`prompthud` makes that free. One glance at the bottom of any window tells you
-exactly where that session stands:
-
-```
-☰ 6 (+1 more) | 2.add jwt r… | 4.why is cookie not being s… ×2 | ✗5.[Image] debug token race | ▶ 6.continue ⋯
-```
-
-Reading left-to-right:
-- **`☰ 6`** — six prompts this session · **`(+1 more)`** — one older prompt folded off the left
-- **`4.… ×2`** — you asked the cookie question twice (consecutive duplicate, folded)
-- **`✗5.…`** — prompt 5 was interrupted before Claude finished
-- **`▶ 6.continue`** — the live prompt · **`⋯`** — Claude is still thinking, no output yet
-
-No scrolling the chat. No remembering. Just glance.
-
-### Full statusline view (with model / git / ctx)
+You're juggling 3-5 Claude Code windows. Cmd-Tab into one five minutes later
+and you need 30 seconds of scrolling to remember what it was even doing.
+`prompthud` pins the answer to the statusline — every session tells you
+where it stands in one glance, without touching the chat.
 
 ```
 [Opus 4.7] │ dora git:(main*) │ ctx ████ 41%
@@ -46,8 +30,6 @@ No scrolling the chat. No remembering. Just glance.
 
 Two steps: register the marketplace, then install from it. `/prompthud:setup` writes a
 glob-based statusline command so plugin upgrades don't break the path.
-
-[▶ 28s demo video](https://github.com/mclamee/prompthud/releases/latest)
 
 ## Commands
 
