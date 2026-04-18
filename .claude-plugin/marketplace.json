@@ -1,6 +1,6 @@
 {
-  "name": "prompthud-dev",
-  "description": "Development marketplace for prompthud",
+  "name": "prompthud",
+  "description": "Marketplace for the prompthud plugin",
   "owner": {
     "name": "Mclamee"
   },
