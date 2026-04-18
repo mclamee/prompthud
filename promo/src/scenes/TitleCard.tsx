@@ -28,7 +28,7 @@ export const TitleCard: React.FC = () => {
           color: "#fff",
         }}
       >
-        prompt<span style={{ color: "#a78bfa" }}>hud</span>
+        prompt<span style={{ color: "#a78bfa" }}>HUD</span>
       </div>
       <div
         style={{

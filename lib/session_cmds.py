@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
-"""prompthud CLI — manages and renders the session-prompts HUD.
+"""prompthud internal CLI — renders the session-prompts HUD.
 
-Subcommands:
-  log         Silent hook; reads UserPromptSubmit JSON from stdin and appends to log.
-  statusline  Full standalone HUD line(s): model · git · ctx · prompts.
-  label       Emits {"label": "..."} for claude-hud's --extra-cmd mechanism.
-  render      Prompts row only (ANSI) — for wrapping other statuslines.
-  list        Prints compact list of current-session prompts for user display.
-  show N      Prints one prompt in full.
-  tail N      Prints the last N prompts.
+Subcommands (all called by the plugin itself, not by end users):
+  log         UserPromptSubmit hook — reads JSON from stdin, appends to TSV log.
+  statusline  Full standalone HUD (model · git · ctx header + prompts row).
+  render      Prompts row only, for wrapping on top of another statusline.
 """
 from __future__ import annotations
 
@@ -21,7 +17,6 @@ import subprocess
 import sys
 import time
 import unicodedata
-from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 try:
@@ -324,13 +319,6 @@ def _visual_width(text: str) -> int:
     return w
 
 
-def _truncate(text: str, limit: int) -> str:
-    """Truncate by character count (fast path used for label widths)."""
-    if len(text) <= limit:
-        return text
-    return text[: limit - 1] + "\u2026"
-
-
 def _truncate_to_width(text: str, max_cells: int) -> str:
     """Truncate by terminal cell width (handles CJK)."""
     if max_cells <= 0:
@@ -517,26 +505,6 @@ def cmd_log(_args: argparse.Namespace) -> int:
                     if last_prompt == prompt and (now - last_ts) <= _DEDUP_WINDOW_SECONDS:
                         return 0  # dup within window, skip
         f.write(f"{now}\t{prompt}\n".encode("utf-8"))
-    return 0
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Subcommand: label (claude-hud --extra-cmd integration, saves a line)
-# ──────────────────────────────────────────────────────────────────────────────
-def cmd_label(args: argparse.Namespace) -> int:
-    sid = _resolve_session_id(args.session_id, use_stdin=False)
-    if not sid:
-        print(json.dumps({"label": ""}))
-        return 0
-    cmds = _load_commands(sid)
-    if not cmds:
-        print(json.dumps({"label": ""}))
-        return 0
-    count = len(cmds)
-    _, current = cmds[-1]
-    current_short = _truncate(current.replace("\n", " "), args.width)
-    label = f"\u2630 {count} \u25b6 {current_short}"
-    print(json.dumps({"label": label}, ensure_ascii=False))
     return 0
 
 
@@ -847,98 +815,21 @@ def _should_two_line(mode: str, cmds: List[Command], width: int,
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Subcommand: list (slash command — compact, context-friendly)
-# ──────────────────────────────────────────────────────────────────────────────
-def cmd_list(args: argparse.Namespace) -> int:
-    sid = _resolve_session_id(args.session_id, use_stdin=False)
-    if not sid:
-        print("No active session found.", file=sys.stderr)
-        return 1
-    cmds = _load_commands(sid)
-    if not cmds:
-        print("No commands recorded for this session yet.")
-        return 0
-
-    total = len(cmds)
-    runs = _collapse_runs(cmds)
-    run_count = len(runs)
-
-    if args.all or run_count <= args.limit:
-        shown_runs = runs
-        truncated_notice = ""
-    else:
-        shown_runs = runs[-args.limit :]
-        truncated_notice = f"(showing last {args.limit} of {run_count} distinct; use --all for every prompt)\n"
-
-    header = f"Session {sid[:8]} · {total} prompt(s)"
-    if run_count < total:
-        header += f", {run_count} distinct"
-    print(header)
-    if truncated_notice:
-        print(truncated_notice, end="")
-    for ts, text, num, run_n in shown_runs:
-        marker = "\u25b6" if num == total else " "
-        hhmm = datetime.fromtimestamp(ts).strftime("%H:%M")
-        short = _truncate(text.replace("\n", " "), args.width - 4)
-        suf = f" ×{run_n}" if run_n > 1 else ""
-        print(f"{marker}{num:>3} {hhmm} {short}{suf}")
-    print()
-    print("Tip: `session-cmds show N` for full text · `session-cmds tail N`")
-    return 0
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Subcommand: show N
-# ──────────────────────────────────────────────────────────────────────────────
-def cmd_show(args: argparse.Namespace) -> int:
-    sid = _resolve_session_id(args.session_id, use_stdin=False)
-    if not sid:
-        print("No active session found.", file=sys.stderr)
-        return 1
-    cmds = _load_commands(sid)
-    if not cmds:
-        print("No commands recorded.", file=sys.stderr)
-        return 1
-    n = args.number
-    if n < 1 or n > len(cmds):
-        print(f"Command #{n} out of range (session has {len(cmds)} cmds).", file=sys.stderr)
-        return 1
-    ts, text = cmds[n - 1]
-    when = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
-    is_current = n == len(cmds)
-    marker = "[current]" if is_current else "[past]"
-    print(f"#{n} {marker} {when}")
-    print("-" * 40)
-    print(text)
-    return 0
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Subcommand: tail N
-# ──────────────────────────────────────────────────────────────────────────────
-def cmd_tail(args: argparse.Namespace) -> int:
-    args.limit = args.count
-    args.all = False
-    return cmd_list(args)
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# CLI
+# CLI — only the three subcommands actually wired into the plugin's hooks
+# and statusline. log runs in UserPromptSubmit; statusline/render are called
+# by Claude Code's statusLine command. No user-facing browse commands.
 # ──────────────────────────────────────────────────────────────────────────────
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="session-cmds",
-        description="Browse user commands from the current Claude Code session.",
+        description="Internal CLI for the prompthud plugin.",
     )
     p.add_argument("--session-id", help="Override session ID (default: auto-detect)")
     sub = p.add_subparsers(dest="command", required=True)
 
     sub.add_parser("log", help="Hook: read UserPromptSubmit JSON from stdin and append to log")
 
-    p_label = sub.add_parser("label", help='Emit {"label": "..."} for claude-hud --extra-cmd')
-    p_label.add_argument("--width", type=int, default=40, help="Max chars of current prompt")
-
-    p_sl = sub.add_parser("statusline", help="Full standalone HUD (no claude-hud needed)")
+    p_sl = sub.add_parser("statusline", help="Full standalone HUD (model/git/ctx header + prompts row)")
     p_sl.add_argument("--width", type=int, default=0,
                       help="Total max cells for cmds row (0 = auto-detect)")
     p_sl.add_argument("--max-cmd-width", type=int, default=30,
@@ -956,29 +847,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_render.add_argument("--lines", choices=["1", "2", "auto"], default="auto",
                           help="Force single-line, two-line, or auto-pick (default)")
 
-    p_list = sub.add_parser("list", help="Print compact list of current-session commands")
-    p_list.add_argument("--limit", type=int, default=20, help="Show last N (default 20)")
-    p_list.add_argument("--all", action="store_true", help="Show every command")
-    p_list.add_argument("--width", type=int, default=60, help="Max chars per line")
-
-    p_show = sub.add_parser("show", help="Print one command in full")
-    p_show.add_argument("number", type=int, help="Command number from `list`")
-
-    p_tail = sub.add_parser("tail", help="Print last N commands")
-    p_tail.add_argument("count", type=int, help="Number of recent commands")
-    p_tail.add_argument("--width", type=int, default=60)
-
     return p
 
 
 HANDLERS = {
     "log": cmd_log,
-    "label": cmd_label,
     "statusline": cmd_statusline,
     "render": cmd_render,
-    "list": cmd_list,
-    "show": cmd_show,
-    "tail": cmd_tail,
 }
 
 

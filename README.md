@@ -1,4 +1,4 @@
-# prompthud
+# promptHUD
 
 **Know every Claude Code session at a glance.**
 
@@ -11,7 +11,7 @@
 
 You're juggling 3-5 Claude Code windows. Cmd-Tab into one five minutes later
 and you need 30 seconds of scrolling to remember what it was even doing.
-`prompthud` pins the answer to the statusline — every session tells you
+`promptHUD` pins the answer to the statusline — every session tells you
 where it stands in one glance, without touching the chat.
 
 ```
@@ -31,22 +31,12 @@ where it stands in one glance, without touching the chat.
 Two steps: register the marketplace, then install from it. `/prompthud:setup` writes a
 glob-based statusline command so plugin upgrades don't break the path.
 
-## Commands
+## Slash commands
 
 | Command | What it does |
 |---------|--------------|
-| `/prompthud:list` | Compact table of all prompts in the current session |
 | `/prompthud:setup` | Install the prompthud statusline into `~/.claude/settings.json` |
-| `/prompthud:bridge-claude-hud` | Add our inline label to claude-hud's session line via its `--extra-cmd` API (compact, 50-char limit) |
-| `/prompthud:wrap-claude-hud` | Wrap any existing statusLine so our **full prompts row** prints below it (treats the base as a black box) |
-
-From `list`, reference a past prompt by number ("看 #3") and the CLI expands it:
-
-```
-session-cmds show 3    # full text of prompt 3
-session-cmds tail 5    # last 5 prompts
-session-cmds list --all
-```
+| `/prompthud:wrap-claude-hud` | Wrap any existing statusLine so the prompts row prints below it (treats the base as a black box) |
 
 ## Configuration
 
@@ -60,84 +50,35 @@ Set as env-prefix on the statusLine command in `~/.claude/settings.json`:
 
 ## Running alongside another statusline plugin
 
-Claude Code's `statusLine` slot takes one command. Two ways to co-exist:
-
-### 1. `bridge` — inline label via claude-hud's public API
-
-```
-/claude-hud:setup
-/prompthud:bridge-claude-hud
-```
-
-Injects `--extra-cmd` into claude-hud's invocation. claude-hud renders its full
-HUD and calls our `label` subcommand for a tiny inline `☰ N ▶ current…` on its
-session line. Zero extra rows, but limited to 50 chars (claude-hud's label cap).
-Depends only on `--extra-cmd` being a stable API.
-
-### 2. `wrap` — full prompts row below any existing statusline
+Claude Code's `statusLine` slot takes one command. Use `/prompthud:wrap-claude-hud` after
+whatever other setup you already ran:
 
 ```
 /claude-hud:setup           # or any other statusline plugin's setup
 /prompthud:wrap-claude-hud
 ```
 
-Captures the current `statusLine.command` string verbatim into
-`~/.claude/prompthud/base.sh`, then rewrites the statusLine to run that base
-first and `session-cmds render` second. We treat the base as a **black box** —
-no dependency on paths, runtimes, or internal APIs. Works for any statusline
-plugin whose command reads Claude Code's JSON from stdin and prints to stdout.
+It captures the current `statusLine.command` string verbatim into
+`$CLAUDE_CONFIG_DIR/prompthud/base.sh`, then rewrites the statusLine to run that base
+first and the prompts row second. We treat the base as a **black box** — no dependency
+on paths, runtimes, or internal APIs. Works for any statusline plugin whose command
+reads Claude Code's JSON from stdin and prints to stdout.
 
 Trade-off: uses an extra row. Re-running the upstream setup overwrites the wrap;
 re-run `/prompthud:wrap-claude-hud` to re-capture.
 
 ### Revert
 
-Run `/claude-hud:setup` (or `/prompthud:setup`) — both reset the statusLine
-cleanly.
+Run `/claude-hud:setup` (or `/prompthud:setup`) — both reset the statusLine cleanly.
 
 ## Requirements
 
 - Python 3 (macOS has it by default; Linux: install `python3` package)
 
-## Layout
-
-```
-prompthud/
-├── bin/
-│   ├── session-cmds              POSIX shell wrapper (detects python3)
-│   ├── install-statusline.py     /prompthud:setup worker
-│   └── bridge-claude-hud.py      /prompthud:bridge-claude-hud worker
-├── lib/
-│   └── session_cmds.py           CLI: log/statusline/label/list/show/tail
-├── hooks/
-│   └── hooks.json                UserPromptSubmit → session-cmds log
-├── scripts/
-│   └── statusline-wrapper.sh     Claude Code statusline entry (standalone only)
-├── commands/
-│   ├── list.md                   /prompthud:list
-│   ├── setup.md                  /prompthud:setup
-│   └── bridge-claude-hud.md      /prompthud:bridge-claude-hud
-└── .claude-plugin/
-    ├── plugin.json
-    └── marketplace.json
-```
-
 ## Data locations
 
-- Per-session log: `~/.claude/prompthud/<session-id>.tsv`
-- Backfill source (pre-install sessions): `~/.claude/history.jsonl`
-
-## CLI subcommands
-
-```
-session-cmds log               # hook (reads UserPromptSubmit JSON from stdin)
-session-cmds statusline        # full standalone HUD — what the statusline calls
-session-cmds label             # JSON {"label": "..."} for claude-hud --extra-cmd
-session-cmds list              # compact list, default last 20
-session-cmds list --all        # show every prompt
-session-cmds show N            # print prompt #N in full
-session-cmds tail N            # show last N prompts
-```
+- Per-session log: `$CLAUDE_CONFIG_DIR/prompthud/<session-id>.tsv` (defaults to `~/.claude/prompthud/`)
+- Backfill source (pre-install sessions): `$CLAUDE_CONFIG_DIR/history.jsonl`
 
 ## License
 

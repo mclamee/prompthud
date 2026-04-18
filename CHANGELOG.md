@@ -2,6 +2,32 @@
 
 All notable changes to prompthud are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.0] — 2026-04-19
+
+### Removed
+- **`/prompthud:bridge-claude-hud`** — claude-hud's 50-char inline label
+  was too cramped to be useful in practice. The `wrap` flow is the
+  supported coexistence path.
+- **`/prompthud:list`** and the browseable CLI subcommands (`list`,
+  `show N`, `tail N`) — nobody actually invoked them. The statusline
+  IS the interface.
+- `label` subcommand. `_truncate` helper (char-based). `datetime`
+  dependency.
+
+### New
+- **Interrupted (✗) + Pending (⋯) markers** in the HUD. Reads Claude
+  Code's transcript JSONL directly so state is accurate across Thinking
+  phase and user-interrupted turns.
+
+### Fixed
+- HUD "689" redraw artefact when the prompt count changed column width
+  between renders. Every row now pads to full terminal width and ends
+  with `\033[K`.
+- Windows-safe `fcntl` (guarded import, no-op fallback).
+- `CLAUDE_CONFIG_DIR` honoured everywhere (Python + generated bash).
+- Debug log no longer lives in `/tmp` (multi-user filesystem conflict
+  on shared hosts).
+
 ## [0.3.0] — 2026-04-18
 
 ### New
