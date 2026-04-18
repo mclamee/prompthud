@@ -58,10 +58,17 @@ npx remotion render TitleCard out/title.mp4
 | 2.5s | 15s | `Demo` | Real/fake terminal with 3 animated callouts |
 | 17.5s | 3s | `CTA` | Install command + GitHub URL |
 
-## Background music (optional)
+## Background music
 
-Drop a loopable track at `public/music.mp3`, then flip `HAS_MUSIC = true`
-in `src/Main.tsx`. The track auto-fades in (0.5s) and out (1s).
+The project ships with `HAS_MUSIC = true` pointing at `public/music.mp3`,
+which is **gitignored** per Pixabay's redistribution terms. To reproduce the
+reference video, download:
+
+- "Minimal Tech" by PaulYudin — https://pixabay.com/music/corporate-minimal-tech-151890/
+
+Save as `public/music.mp3`. The track auto-fades in (0.5s) and out (1s).
+To use a different track, just replace the file. To mute entirely, flip
+`HAS_MUSIC = false` in `src/Main.tsx`.
 
 Free sources:
 - [pixabay.com/music](https://pixabay.com/music/) — filter by genre "tech / ambient"

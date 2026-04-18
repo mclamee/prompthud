@@ -12,9 +12,10 @@ export const MAIN_DURATION_FRAMES = Math.round(
   (TITLE_SECONDS + DEMO_SECONDS + CTA_SECONDS) * FPS,
 );
 
-// Drop a loopable track at promo/public/music.mp3 then flip to true.
-// Suggested: pixabay.com/music (tech/ambient), chosic.com (free lofi), uppbeat.io.
-const HAS_MUSIC = false;
+// Music: "Minimal Tech" by PaulYudin (Pixabay, royalty-free).
+// Source: https://pixabay.com/music/corporate-minimal-tech-151890/
+// Replace public/music.mp3 to swap tracks; set HAS_MUSIC=false to mute.
+const HAS_MUSIC = true;
 
 export const Main: React.FC = () => {
   return (
