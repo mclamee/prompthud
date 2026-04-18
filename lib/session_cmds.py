@@ -22,7 +22,7 @@ import sys
 import time
 import unicodedata
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 try:
     import fcntl  # POSIX-only; Windows falls back to no-op locking.
@@ -137,6 +137,134 @@ def _load_commands(session_id: str) -> List[Command]:
     return cmds
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Transcript state detection
+#
+# Our TSV log captures every prompt the user submits (via UserPromptSubmit
+# hook), but it has no concept of whether that prompt was interrupted or is
+# still being answered. Claude Code's transcript JSONL is the canonical source
+# of turn state. Each user turn is followed by one or more assistant messages;
+# an interrupt is recorded as a synthetic user message with content
+# "[Request interrupted by user]". A still-pending turn has no assistant
+# stop_reason=end_turn after it yet.
+# ──────────────────────────────────────────────────────────────────────────────
+STATE_COMPLETED = "completed"
+STATE_INTERRUPTED = "interrupted"
+STATE_PENDING = "pending"
+
+_INTERRUPT_MARK = "[Request interrupted by user]"
+
+# String-content user messages that start with these wrappers are synthetic —
+# emitted by Claude Code itself (slash-command plumbing, local-command output,
+# caveats) and do NOT correspond to real user prompts the hook ever sees.
+_SYNTHETIC_STRING_PREFIXES = (
+    "<local-command-",
+    "<command-name>",
+    "<command-message>",
+    "<command-args>",
+    "<command-stdout>",
+    "<command-stderr>",
+)
+
+
+def _is_synthetic_string_content(text: str) -> bool:
+    s = text.lstrip()
+    return any(s.startswith(p) for p in _SYNTHETIC_STRING_PREFIXES)
+
+
+def _read_transcript_states(transcript_path: str) -> List[str]:
+    """Walk the transcript and return one state per *real* user prompt, in
+    order. "Real" excludes tool-result user messages, sidechain user messages,
+    and the synthetic interrupt-marker user messages themselves."""
+    if not transcript_path or not os.path.exists(transcript_path):
+        return []
+    states: List[str] = []
+    try:
+        with open(transcript_path) as f:
+            for line in f:
+                try:
+                    entry = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                etype = entry.get("type")
+                if etype == "user":
+                    if entry.get("isSidechain"):
+                        continue
+                    msg = entry.get("message") or {}
+                    content = msg.get("content")
+                    # Old string-content form
+                    if isinstance(content, str):
+                        if (content.strip()
+                                and _INTERRUPT_MARK not in content
+                                and not _is_synthetic_string_content(content)):
+                            states.append(STATE_PENDING)
+                        continue
+                    if not isinstance(content, list):
+                        continue
+                    has_interrupt = False
+                    has_tool_result = False
+                    has_real_text = False
+                    for block in content:
+                        if not isinstance(block, dict):
+                            continue
+                        btype = block.get("type")
+                        if btype == "tool_result":
+                            has_tool_result = True
+                        elif btype == "text":
+                            text = block.get("text") or ""
+                            if _INTERRUPT_MARK in text:
+                                has_interrupt = True
+                            elif text.strip():
+                                has_real_text = True
+                    if has_interrupt and states:
+                        # The preceding still-pending prompt is the one that
+                        # got interrupted.
+                        for i in range(len(states) - 1, -1, -1):
+                            if states[i] == STATE_PENDING:
+                                states[i] = STATE_INTERRUPTED
+                                break
+                        continue
+                    if has_tool_result and not has_real_text:
+                        continue
+                    if has_real_text:
+                        states.append(STATE_PENDING)
+                elif etype == "assistant":
+                    msg = entry.get("message") or {}
+                    stop = msg.get("stop_reason")
+                    # Any terminal stop reason closes the turn. `tool_use` is
+                    # mid-turn — keep state as pending until the subsequent
+                    # terminal message lands.
+                    if stop in ("end_turn", "stop_sequence", "max_tokens") \
+                            and states and states[-1] == STATE_PENDING:
+                        states[-1] = STATE_COMPLETED
+    except OSError:
+        return []
+    return states
+
+
+def _align_states_to_cmds(cmds: List[Command], states: List[str]) -> Dict[int, str]:
+    """Return a 1-based-index → state mapping. Align by trailing position so
+    the most-recent prompts always carry the correct state even if our TSV
+    count and the transcript's user-prompt count diverge (e.g. after a
+    backfill)."""
+    out: Dict[int, str] = {}
+    n, m = len(cmds), len(states)
+    k = min(n, m)
+    for i in range(k):
+        cmd_idx_1based = n - i  # 1-based
+        state = states[m - 1 - i]
+        if state != STATE_COMPLETED:
+            out[cmd_idx_1based] = state
+    return out
+
+
+# When `cmd_render` consumes stdin to resolve the session, we want to keep the
+# parsed JSON around so the caller can also pull transcript_path out of it.
+# This module-level cache is fine because each CLI invocation is a one-shot
+# subprocess — there's no long-lived state to worry about.
+_STDIN_JSON_CACHE: Optional[dict] = None
+
+
 def _resolve_session_id(explicit: Optional[str], use_stdin: bool = False) -> Optional[str]:
     """Resolve session ID from explicit arg, stdin JSON (opt-in), or recent history.
 
@@ -144,6 +272,7 @@ def _resolve_session_id(explicit: Optional[str], use_stdin: bool = False) -> Opt
     Other subcommands skip stdin because parent callers (e.g. bun's exec) may
     leave stdin open and block forever on read.
     """
+    global _STDIN_JSON_CACHE
     if explicit:
         return explicit
 
@@ -152,6 +281,7 @@ def _resolve_session_id(explicit: Optional[str], use_stdin: bool = False) -> Opt
         if raw.strip():
             try:
                 data = json.loads(raw)
+                _STDIN_JSON_CACHE = data
                 sid = data.get("session_id") or _extract_session_id(data.get("transcript_path", ""))
                 if sid:
                     return sid
@@ -448,14 +578,36 @@ def _run_suffix(count: int) -> str:
     return f" \u00d7{count}" if count > 1 else ""
 
 
+INTERRUPTED_GLYPH = "\u2717"  # ✗
+PENDING_GLYPH = "\u22ef"      # ⋯
+
+
+def _run_is_interrupted(run_last_idx_1based: int, run_count: int, states: Dict[int, str]) -> bool:
+    """A collapsed run covers 1-based indices
+       [run_last_idx_1based - run_count + 1, ..., run_last_idx_1based].
+    Treat the run as interrupted if ANY of those indices is interrupted."""
+    for i in range(run_last_idx_1based - run_count + 1, run_last_idx_1based + 1):
+        if states.get(i) == STATE_INTERRUPTED:
+            return True
+    return False
+
+
+def _run_is_pending(run_last_idx_1based: int, states: Dict[int, str]) -> bool:
+    """Only the last index of a run can be pending (any later prompt would
+    have closed the run). So we only check the terminal index."""
+    return states.get(run_last_idx_1based) == STATE_PENDING
+
+
 def _pack_cmds_two_line(
     cmds: List[Command],
     max_width: int,
     max_cmd_width: int = 30,
+    states: Optional[Dict[int, str]] = None,
 ) -> List[str]:
     """Two-line layout: past runs on row 1, current run on row 2."""
     if not cmds:
         return []
+    states = states or {}
     runs = _collapse_runs(cmds)
     total = len(cmds)
 
@@ -464,10 +616,13 @@ def _pack_cmds_two_line(
     cur_clean = cur_text.replace("\n", " ")
     suf = _run_suffix(cur_count)
     prefix_cur = f"\u25b6 {cur_num}."
-    prefix_cur_w = _visual_width(prefix_cur) + _visual_width(suf)
+    cur_pending = _run_is_pending(cur_num, states)
+    pending_tail_plain = f" {PENDING_GLYPH}" if cur_pending else ""
+    prefix_cur_w = _visual_width(prefix_cur) + _visual_width(suf) + _visual_width(pending_tail_plain)
     budget_cur = max(20, max_width - prefix_cur_w)
     cur_short = _truncate_to_width(cur_clean, budget_cur)
-    line2 = f"{GREEN}{BOLD}{prefix_cur}{cur_short}{suf}{RESET}"
+    pending_tail_styled = f"{DIM}{pending_tail_plain}{RESET}" if cur_pending else ""
+    line2 = f"{GREEN}{BOLD}{prefix_cur}{cur_short}{suf}{RESET}{pending_tail_styled}"
 
     # --- Line 1: header + past runs (greedy, right-to-left) ---
     header_plain = f"\u2630 {total}"
@@ -487,8 +642,10 @@ def _pack_cmds_two_line(
         _, text, num, count_ = past_runs[i]
         text_clean = text.replace("\n", " ")
         suf_i = _run_suffix(count_)
+        is_interrupted = _run_is_interrupted(num, count_, states)
+        int_lead_plain = f"{INTERRUPTED_GLYPH}" if is_interrupted else ""
         prefix_p = f"{num}."
-        prefix_p_w = _visual_width(prefix_p) + _visual_width(suf_i)
+        prefix_p_w = _visual_width(int_lead_plain) + _visual_width(prefix_p) + _visual_width(suf_i)
         hidden_runs_if_stop = i
         hidden_tail_w = _visual_width(f" (+{hidden_runs_if_stop} more)") if hidden_runs_if_stop > 0 else 0
         needed = sep_width + prefix_p_w + 8 + hidden_tail_w
@@ -498,8 +655,11 @@ def _pack_cmds_two_line(
         if budget < 8:
             break
         short = _truncate_to_width(text_clean, budget)
-        piece = f"{DIM}{prefix_p}{RESET}{CYAN}{short}{RESET}{DIM}{suf_i}{RESET}"
-        consumed = sep_width + _visual_width(prefix_p + short) + _visual_width(suf_i)
+        if is_interrupted:
+            piece = f"{RED}{int_lead_plain}{RESET}{DIM}{prefix_p}{short}{suf_i}{RESET}"
+        else:
+            piece = f"{DIM}{prefix_p}{RESET}{CYAN}{short}{RESET}{DIM}{suf_i}{RESET}"
+        consumed = sep_width + _visual_width(int_lead_plain + prefix_p + short) + _visual_width(suf_i)
         remaining -= consumed
         fitted.append(piece)
         fitted_runs += 1
@@ -520,6 +680,7 @@ def _pack_cmds_into_width(
     max_width: int,
     min_cmd_width: int = 8,
     max_cmd_width: int = 40,
+    states: Optional[Dict[int, str]] = None,
 ) -> str:
     """Greedily pack session commands into a single line ≤ max_width cells.
 
@@ -528,6 +689,7 @@ def _pack_cmds_into_width(
     """
     if not cmds:
         return ""
+    states = states or {}
     runs = _collapse_runs(cmds)
     total = len(cmds)
 
@@ -541,13 +703,16 @@ def _pack_cmds_into_width(
     # Current run (last)
     _, cur_text, cur_num, cur_count = runs[-1]
     cur_suf = _run_suffix(cur_count)
+    cur_pending = _run_is_pending(cur_num, states)
+    pending_tail_plain = f" {PENDING_GLYPH}" if cur_pending else ""
     prefix_N = f"\u25b6 {cur_num}."
-    prefix_N_w = _visual_width(prefix_N) + _visual_width(cur_suf)
+    prefix_N_w = _visual_width(prefix_N) + _visual_width(cur_suf) + _visual_width(pending_tail_plain)
     cur_clean = cur_text.replace("\n", " ")
     cur_budget = min(max_cmd_width, max(min_cmd_width, remaining - prefix_N_w))
     cur_short = _truncate_to_width(cur_clean, cur_budget)
-    cur_piece_w = _visual_width(prefix_N) + _visual_width(cur_short) + _visual_width(cur_suf)
-    cur_piece_styled = f"{GREEN}{BOLD}{prefix_N}{cur_short}{cur_suf}{RESET}"
+    cur_piece_w = _visual_width(prefix_N) + _visual_width(cur_short) + _visual_width(cur_suf) + _visual_width(pending_tail_plain)
+    pending_tail_styled = f"{DIM}{pending_tail_plain}{RESET}" if cur_pending else ""
+    cur_piece_styled = f"{GREEN}{BOLD}{prefix_N}{cur_short}{cur_suf}{RESET}{pending_tail_styled}"
 
     remaining -= cur_piece_w
     fitted_pieces = [cur_piece_styled]
@@ -558,8 +723,10 @@ def _pack_cmds_into_width(
         _, text, num, run_count = past_runs[i]
         text_clean = text.replace("\n", " ")
         suf_i = _run_suffix(run_count)
+        is_interrupted = _run_is_interrupted(num, run_count, states)
+        int_lead_plain = f"{INTERRUPTED_GLYPH}" if is_interrupted else ""
         prefix_p = f"{num}."
-        prefix_p_w = _visual_width(prefix_p) + _visual_width(suf_i)
+        prefix_p_w = _visual_width(int_lead_plain) + _visual_width(prefix_p) + _visual_width(suf_i)
         hidden_runs_if_stop = i
         tail_if_stop = _visual_width(f" (+{hidden_runs_if_stop} more)") if hidden_runs_if_stop > 0 else 0
         needed_min = sep_width + prefix_p_w + min_cmd_width
@@ -569,9 +736,12 @@ def _pack_cmds_into_width(
         if budget < min_cmd_width:
             break
         short = _truncate_to_width(text_clean, budget)
-        consumed = sep_width + _visual_width(prefix_p) + _visual_width(short) + _visual_width(suf_i)
+        consumed = sep_width + _visual_width(int_lead_plain + prefix_p + short) + _visual_width(suf_i)
         remaining -= consumed
-        fitted_pieces.append(f"{DIM}{prefix_p}{RESET}{CYAN}{short}{RESET}{DIM}{suf_i}{RESET}")
+        if is_interrupted:
+            fitted_pieces.append(f"{RED}{int_lead_plain}{RESET}{DIM}{prefix_p}{short}{suf_i}{RESET}")
+        else:
+            fitted_pieces.append(f"{DIM}{prefix_p}{RESET}{CYAN}{short}{RESET}{DIM}{suf_i}{RESET}")
         fitted_runs += 1
 
     hidden_runs = len(runs) - fitted_runs
@@ -596,13 +766,19 @@ def cmd_render(args: argparse.Namespace) -> int:
     cmds = _load_commands(sid)
     if not cmds:
         return 0
+    # _STDIN_JSON_CACHE was populated by _resolve_session_id if stdin had JSON
+    transcript_path = (_STDIN_JSON_CACHE or {}).get("transcript_path", "")
+    states = _align_states_to_cmds(cmds, _read_transcript_states(transcript_path)) if transcript_path else {}
     width = args.width if args.width > 0 else max(40, _detect_terminal_width() - SAFETY_MARGIN)
     lines_env = os.environ.get("PROMPTHUD_LINES", args.lines)
     if _should_two_line(lines_env, cmds, width, args.max_cmd_width):
-        for line in _pack_cmds_two_line(cmds, max_width=width, max_cmd_width=args.max_cmd_width):
+        for line in _pack_cmds_two_line(cmds, max_width=width, max_cmd_width=args.max_cmd_width, states=states):
             _print_hud_line(line, width)
     else:
-        _print_hud_line(_pack_cmds_into_width(cmds, max_width=width, max_cmd_width=args.max_cmd_width), width)
+        _print_hud_line(
+            _pack_cmds_into_width(cmds, max_width=width, max_cmd_width=args.max_cmd_width, states=states),
+            width,
+        )
     return 0
 
 
@@ -627,8 +803,10 @@ def cmd_statusline(args: argparse.Namespace) -> int:
     ctx = data.get("context_window") or {}
     ctx_pct = ctx.get("used_percentage")
 
-    sid = _extract_session_id(data.get("transcript_path", "")) or _resolve_session_id(None, use_stdin=False)
+    transcript_path = data.get("transcript_path", "")
+    sid = _extract_session_id(transcript_path) or _resolve_session_id(None, use_stdin=False)
     cmds = _load_commands(sid) if sid else []
+    states = _align_states_to_cmds(cmds, _read_transcript_states(transcript_path)) if transcript_path else {}
 
     width = args.width if args.width > 0 else max(40, _detect_terminal_width() - SAFETY_MARGIN)
 
@@ -645,10 +823,10 @@ def cmd_statusline(args: argparse.Namespace) -> int:
 
     if cmds:
         if _should_two_line(args.lines, cmds, width, args.max_cmd_width):
-            for line in _pack_cmds_two_line(cmds, max_width=width, max_cmd_width=args.max_cmd_width):
+            for line in _pack_cmds_two_line(cmds, max_width=width, max_cmd_width=args.max_cmd_width, states=states):
                 _print_hud_line(line, width)
         else:
-            line = _pack_cmds_into_width(cmds, max_width=width, max_cmd_width=args.max_cmd_width)
+            line = _pack_cmds_into_width(cmds, max_width=width, max_cmd_width=args.max_cmd_width, states=states)
             _print_hud_line(line, width)
     return 0
 
