@@ -22,7 +22,7 @@ export const Root: React.FC = () => {
       <Composition
         id="TitleCard"
         component={TitleCard}
-        durationInFrames={Math.round(FPS * 2.5)}
+        durationInFrames={FPS * 3}
         fps={FPS}
         width={WIDTH}
         height={HEIGHT}
@@ -30,7 +30,7 @@ export const Root: React.FC = () => {
       <Composition
         id="Demo"
         component={Demo}
-        durationInFrames={FPS * 15}
+        durationInFrames={FPS * 20}
         fps={FPS}
         width={WIDTH}
         height={HEIGHT}
@@ -38,7 +38,7 @@ export const Root: React.FC = () => {
       <Composition
         id="CTA"
         component={CTA}
-        durationInFrames={FPS * 3}
+        durationInFrames={FPS * 5}
         fps={FPS}
         width={WIDTH}
         height={HEIGHT}

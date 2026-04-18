@@ -49,7 +49,7 @@ export const Demo: React.FC = () => {
         <Callout text="×N folds duplicates" anchorX={0.55} anchorY={0.82} direction="up" />
       </Sequence>
 
-      <Sequence from={FPS * 12} durationInFrames={FPS * 3}>
+      <Sequence from={FPS * 14} durationInFrames={FPS * 4}>
         <Callout
           text="every prompt preserved, even custom commands"
           anchorX={0.55}

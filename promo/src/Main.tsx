@@ -4,9 +4,9 @@ import { Demo } from "./scenes/Demo";
 import { CTA } from "./scenes/CTA";
 
 const FPS = 30;
-const TITLE_SECONDS = 2.5;
-const DEMO_SECONDS = 15;
-const CTA_SECONDS = 3;
+const TITLE_SECONDS = 3;
+const DEMO_SECONDS = 20;
+const CTA_SECONDS = 5;
 
 export const MAIN_DURATION_FRAMES = Math.round(
   (TITLE_SECONDS + DEMO_SECONDS + CTA_SECONDS) * FPS,
