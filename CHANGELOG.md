@@ -2,6 +2,21 @@
 
 All notable changes to prompthud are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.1] — 2026-04-19
+
+### Renamed
+- **`/prompthud:wrap-claude-hud`** → **`/prompthud:bridge-claude-hud`**.
+  "Bridge" reads closer to what users actually describe the operation
+  as. The backing script (`bin/bridge-claude-hud.py`) and state sentinel
+  (`: prompthud-bridge`) move in lockstep; `KNOWN_SENTINELS` retains
+  the old strings so 0.3.x / 0.4.0 installs keep their existing capture
+  on upgrade.
+
+### Docs
+- README shows the HUD example as a colored SVG (`docs/hud-example.svg`)
+  instead of a monochrome fenced block — GitHub sanitizes ANSI / style
+  attributes from ``` blocks so colors need an `<img>`.
+
 ## [0.4.0] — 2026-04-19
 
 ### Removed
