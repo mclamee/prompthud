@@ -1,25 +1,21 @@
 #!/usr/bin/env python3
-"""Wrap whatever statusLine command is currently configured so that prompthud's
-prompts row is appended below its output.
+"""Bridge any existing statusLine (claude-hud or otherwise) with promptHUD's
+prompts row — by capturing the current command and prepending it to ours.
 
-Unlike bridge-claude-hud (which injects --extra-cmd into claude-hud's invocation
-and depends on claude-hud's API), this script treats the existing statusLine
-command as a black box:
-
+Behaviour:
   1. Capture the current `statusLine.command` string verbatim.
-  2. Save it to `~/.claude/prompthud/base.sh` (via `eval "$BASE"`).
+  2. Save it to `$CLAUDE_CONFIG_DIR/prompthud/base.sh`.
   3. Rewrite `statusLine.command` to a new shell one-liner that:
        - reads stdin once,
        - pipes it to the captured base command (prints its full output),
        - pipes the same stdin to `session-cmds render` (prints the prompts row).
 
-Because we don't interpret the base command, this survives claude-hud upgrades,
-runtime changes, or config tweaks — whatever they write to settings.json keeps
-working. The only assumption is that the base reads Claude Code statusline JSON
-from stdin and prints HUD lines to stdout.
+We treat the base as a black box — no dependency on paths, runtimes, or
+internal APIs. Works for any statusline plugin whose command reads Claude
+Code's JSON from stdin and prints HUD lines to stdout.
 
-Re-running `/claude-hud:setup` (or any other setup) overwrites our wrapped
-statusLine; re-run `/prompthud:wrap-claude-hud` to re-wrap.
+Re-running `/claude-hud:setup` (or any other setup) overwrites our bridge;
+re-run `/prompthud:bridge-claude-hud` to re-capture.
 """
 from __future__ import annotations
 
@@ -31,11 +27,13 @@ from pathlib import Path
 _CLAUDE_DIR = Path(os.environ.get("CLAUDE_CONFIG_DIR") or (Path.home() / ".claude"))
 SETTINGS = _CLAUDE_DIR / "settings.json"
 BASE_SCRIPT = _CLAUDE_DIR / "prompthud" / "base.sh"
-SENTINEL = ": prompthud-wrap"  # `:` is the shell no-op; arg is ignored but stays in the command string for detection
+SENTINEL = ": prompthud-bridge"  # `:` is a shell no-op; arg stays in the command string for detection.
 
-# Any of these substrings means the statusLine is already a prompthud wrap.
+# Any of these substrings means the statusLine is already a promptHUD bridge.
+# Earlier names are retained so existing installs upgrade cleanly.
 KNOWN_SENTINELS = (
-    ": prompthud-wrap",
+    ": prompthud-bridge",
+    ": prompthud-wrap",   # 0.3.x – 0.4.x name
     "# prompthud-wrap",   # legacy (0.3.0 pre-fix)
     "prompthud/base.sh",  # belt-and-braces
 )
@@ -48,8 +46,8 @@ def _plug_glob() -> str:
     )
 
 
-def _build_wrapped_command(lines_arg: str = "auto") -> str:
-    """New statusLine command. Runs base first, then our render row."""
+def _build_bridged_command(lines_arg: str = "auto") -> str:
+    """New statusLine command. Runs the captured base first, then our render row."""
     base_path = str(BASE_SCRIPT)
     return (
         f"bash -c '{SENTINEL}; "
@@ -65,7 +63,7 @@ def _build_wrapped_command(lines_arg: str = "auto") -> str:
 def main() -> int:
     if not SETTINGS.exists():
         print(f"error: {SETTINGS} does not exist.", file=sys.stderr)
-        print("Run /claude-hud:setup first, then re-run this wrap.", file=sys.stderr)
+        print("Run /claude-hud:setup first, then re-run this bridge.", file=sys.stderr)
         return 1
 
     try:
@@ -79,55 +77,48 @@ def main() -> int:
 
     if not current:
         print("error: no statusLine.command configured.", file=sys.stderr)
-        print("Run /claude-hud:setup first, then re-run this wrap.", file=sys.stderr)
+        print("Run /claude-hud:setup first, then re-run this bridge.", file=sys.stderr)
         return 1
 
-    already_wrapped = any(s in current for s in KNOWN_SENTINELS)
+    already_bridged = any(s in current for s in KNOWN_SENTINELS)
 
-    if already_wrapped:
+    if already_bridged:
         if not BASE_SCRIPT.exists():
-            print(f"error: statusLine looks wrapped but {BASE_SCRIPT} is missing.", file=sys.stderr)
-            print("Run /claude-hud:setup (or /prompthud:setup) to reset, then re-wrap.", file=sys.stderr)
+            print(f"error: statusLine looks bridged but {BASE_SCRIPT} is missing.", file=sys.stderr)
+            print("Run /claude-hud:setup (or /prompthud:setup) to reset, then re-bridge.", file=sys.stderr)
             return 1
         # Don't re-capture — reuse existing base.
         captured_preview = BASE_SCRIPT.read_text().splitlines()[-1]
         action = "refreshed"
     else:
-        # Refuse to capture a base that would itself recurse through the wrap
-        # (e.g. a stale settings.json with an older wrap sentinel we missed).
-        if any(s in current for s in KNOWN_SENTINELS):
-            print("error: candidate base already references prompthud's wrap — "
-                  "refusing to self-nest.", file=sys.stderr)
-            print("Run /claude-hud:setup (or /prompthud:setup) to reset, then re-wrap.", file=sys.stderr)
-            return 1
-        # First-time wrap: capture the current statusLine verbatim.
+        # First-time bridge: capture the current statusLine verbatim.
         BASE_SCRIPT.parent.mkdir(parents=True, exist_ok=True)
         BASE_SCRIPT.write_text(
             "#!/bin/bash\n"
-            "# Captured statusLine command (do not edit; regenerated by prompthud:wrap-claude-hud)\n"
+            "# Captured statusLine command (do not edit; regenerated by prompthud:bridge-claude-hud)\n"
             f"{current}\n"
         )
         os.chmod(BASE_SCRIPT, 0o755)
         captured_preview = current
-        action = "wrapped"
+        action = "bridged"
 
     lines_arg = os.environ.get("PROMPTHUD_LINES", "auto")
     settings["statusLine"] = {
         "type": "command",
-        "command": _build_wrapped_command(lines_arg),
+        "command": _build_bridged_command(lines_arg),
     }
     SETTINGS.write_text(json.dumps(settings, indent=2, ensure_ascii=False))
 
-    print(f"✓ statusLine {action} by prompthud.")
+    print(f"✓ statusLine {action} by promptHUD.")
     print(f"  base script : {BASE_SCRIPT}")
     print(f"  base preview: {captured_preview[:80]}{'…' if len(captured_preview) > 80 else ''}")
     print()
-    print("The wrapped statusLine now prints:")
+    print("The bridged statusLine now prints:")
     print("  1. your existing HUD (claude-hud or whatever you had)")
-    print("  2. prompthud's prompts row below it")
+    print("  2. promptHUD's prompts row below it")
     print()
     print("To revert: re-run /claude-hud:setup (or /prompthud:setup).")
-    print("To re-wrap after upstream updates: /claude-hud:setup then /prompthud:wrap-claude-hud.")
+    print("To re-bridge after upstream updates: /claude-hud:setup then /prompthud:bridge-claude-hud.")
     print("Restart Claude Code or /reload-plugins to apply.")
     return 0
 

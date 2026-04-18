@@ -14,10 +14,7 @@ and you need 30 seconds of scrolling to remember what it was even doing.
 `promptHUD` pins the answer to the statusline — every session tells you
 where it stands in one glance, without touching the chat.
 
-```
-[Opus 4.7] │ dora git:(main*) │ ctx ████ 41%
-☰ 10 (+3 more) | 7.debug token rotation… ×3 | 8.add remember-me checkbox | 9./test | ▶ 10./commit ⋯
-```
+![promptHUD statusline example](docs/hud-example.svg)
 
 ## Install
 
