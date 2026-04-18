@@ -176,7 +176,8 @@ export const FakeTerminal: React.FC = () => {
         <div style={{ color: "#64748b", marginLeft: 16, fontSize: 20 }}>~ claude code session</div>
       </div>
 
-      {/* Transcript — scrolls as new lines arrive, older prompts get pushed off the top. */}
+      {/* Transcript — deliberately muted to de-emphasise the "prompts scroll
+         away" problem; the viewer's eye should land on the HUD below. */}
       <div
         style={{
           flex: 1,
@@ -184,6 +185,13 @@ export const FakeTerminal: React.FC = () => {
           overflow: "hidden",
           position: "relative",
           minHeight: TRANSCRIPT_HEIGHT,
+          opacity: 0.4,
+          // Fade the top ~30% of the transcript into the background so scrolled
+          // lines visibly dissolve rather than hard-clipping at the edge.
+          maskImage:
+            "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.3) 18%, black 35%)",
+          WebkitMaskImage:
+            "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.3) 18%, black 35%)",
         }}
       >
         <div style={{ transform: `translateY(${translateY}px)`, willChange: "transform" }}>
@@ -196,7 +204,7 @@ export const FakeTerminal: React.FC = () => {
                     height: LINE_HEIGHT,
                     lineHeight: `${LINE_HEIGHT}px`,
                     color: line.text.startsWith("/") ? "#fbbf24" : "#a78bfa",
-                    fontWeight: 700,
+                    fontWeight: 600,
                   }}
                 >
                   &gt; {line.text}
@@ -209,8 +217,7 @@ export const FakeTerminal: React.FC = () => {
                 style={{
                   height: LINE_HEIGHT,
                   lineHeight: `${LINE_HEIGHT}px`,
-                  color: "#64748b",
-                  opacity: 0.85,
+                  color: "#475569",
                 }}
               >
                 {line.text}
@@ -220,27 +227,30 @@ export const FakeTerminal: React.FC = () => {
         </div>
       </div>
 
-      {/* Input line — pinned at the bottom of the chat area */}
+      {/* Input line — also muted; it's context, not the hero. */}
       <div
         style={{
           padding: "14px 30px",
           borderTop: "1px solid #1e1e2a",
-          color: typedPrompt.startsWith("/") ? "#fbbf24" : "#cbd5e1",
+          color: typedPrompt.startsWith("/") ? "#fbbf24" : "#64748b",
           minHeight: 50,
+          opacity: 0.55,
         }}
       >
-        &gt; <span style={{ opacity: 0.6 }}>{typedPrompt}</span>
+        &gt; <span>{typedPrompt}</span>
         <span style={{ opacity: Math.sin(frame / 4) > 0 ? 1 : 0, color: "#a78bfa" }}>▍</span>
       </div>
 
-      {/* HUD row — prompthud's contribution; every prompt stays visible here */}
+      {/* HUD row — the hero. Brighter background, thicker glowing border,
+         larger font so the eye naturally lands here. */}
       <div
         style={{
           opacity: hudOpacity,
-          backgroundColor: "#0a0a12",
-          borderTop: "2px solid #312e4a",
-          padding: "16px 30px",
-          fontSize: 20,
+          backgroundColor: "#15152a",
+          borderTop: "2px solid #7c3aed",
+          boxShadow: "0 -20px 60px rgba(124, 58, 237, 0.35), inset 0 1px 0 rgba(167, 139, 250, 0.25)",
+          padding: "20px 30px",
+          fontSize: 24,
           whiteSpace: "nowrap",
           overflow: "hidden",
         }}
