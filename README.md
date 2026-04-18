@@ -2,10 +2,9 @@
 
 **Know every Claude Code session at a glance.**
 
-<video src="https://github.com/mclamee/prompthud/releases/latest/download/prompthud-promo.mp4" controls muted loop width="100%">
-  Your browser can't play the inline video —
-  <a href="https://github.com/mclamee/prompthud/releases/latest">download the 28s promo</a>.
-</video>
+![promptHUD in action](docs/promo.gif)
+
+> [📥 Download full-quality mp4](https://github.com/mclamee/prompthud/releases/latest/download/prompthud-promo.mp4) (1080p, 28 s)
 
 ## Why
 
