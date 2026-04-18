@@ -25,28 +25,34 @@ export const Demo: React.FC = () => {
         <FakeTerminal />
       )}
 
-      {/* Three callouts, one feature per beat:
-             0-2s    baseline HUD building                   (no callout)
-             1.5s    ▶ live prompt              anchor 0.70
-             2.7s    Group A duplicate lands (×2 badge)
-             4.5s    Group B duplicate starts
-             5.5s    ×3 badge pulses
-             6.0s    ×N folds duplicates        anchor 0.72  (both groups visible)
-             8.2s    /commit lands
-            11.0s    every prompt preserved     anchor 0.68                         */}
+      {/* Callouts centered horizontally (anchor 0.55) for visual balance —
+         the HUD is the horizontal bar the viewer's eye is already on, so
+         pointing "at the bar" from center reads cleanly without the label
+         drifting off to one side.
+         Timing retuned for the new reveal pace (~0.8 prompts/s):
+             0-3s     baseline prompts 1-3
+            ~3.75s    prompt 4 → Group A ×2 appears
+            ~5-7.5s   prompts 5-7 → Group B grows to ×3
+            ~8.75s    /test
+            ~10s      /code-review
+            ~11.25s   /commit lands
+           Callouts:
+             1.5s     ▶ live prompt
+             7.5s     ×N folds duplicates (both groups visible)
+            12s       every prompt preserved                                        */}
 
       <Sequence from={FPS * 1.5} durationInFrames={FPS * 2.5}>
-        <Callout text="▶ live prompt, always visible" anchorX={0.70} anchorY={0.82} direction="up" />
+        <Callout text="▶ live prompt, always visible" anchorX={0.55} anchorY={0.82} direction="up" />
       </Sequence>
 
-      <Sequence from={FPS * 6} durationInFrames={FPS * 3}>
-        <Callout text="×N folds duplicates" anchorX={0.72} anchorY={0.82} direction="up" />
+      <Sequence from={FPS * 7.5} durationInFrames={FPS * 3}>
+        <Callout text="×N folds duplicates" anchorX={0.55} anchorY={0.82} direction="up" />
       </Sequence>
 
-      <Sequence from={FPS * 11} durationInFrames={FPS * 3.5}>
+      <Sequence from={FPS * 12} durationInFrames={FPS * 3}>
         <Callout
           text="every prompt preserved, even /commit"
-          anchorX={0.68}
+          anchorX={0.55}
           anchorY={0.82}
           direction="up"
         />

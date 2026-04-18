@@ -57,7 +57,8 @@ const RESPONSE_POOL: string[][] = [
   ["$ git add -A && git commit", "[main a1b2c3d] feat(auth): refresh + token race fix", " 5 files changed, 61 insertions(+), 15 deletions(-)", "$ git push", "Pushed to origin/main"],
 ];
 
-const LINES_PER_SEC = 5.5; // matches 1.1 prompts/s × ~5 lines each
+const LINES_PER_SEC = 4.0; // ~0.8 prompts/s — slow enough that viewers can
+                           // read each baseline prompt before the next lands
 
 // ──────────────────────────────────────────────────────────────────────────
 // HUD packing (real prompthud behaviour)

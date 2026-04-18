@@ -40,7 +40,7 @@ export const TitleCard: React.FC = () => {
           fontWeight: 400,
         }}
       >
-        Never lose your prompts again.
+        Know every session at a glance.
       </div>
       <div
         style={{
