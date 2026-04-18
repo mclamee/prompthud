@@ -47,11 +47,12 @@ def build_statusline_command(env_prefix: str = "") -> str:
     """
     return (
         "bash -c '"
-        "plug=$(ls -td \"$HOME\"/.claude/plugins/cache/*/prompthud/*/ 2>/dev/null | head -1);"
+        "cdir=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\";"
+        " plug=$(ls -td \"$cdir\"/plugins/cache/*/prompthud/*/ 2>/dev/null | head -1);"
         " if [ -n \"$plug\" ]; then "
         f"{env_prefix}bash \"${{plug}}scripts/statusline-wrapper.sh\";"
         " elif [ -n \"$PROMPTHUD_DEBUG\" ]; then "
-        "echo \"prompthud: plugin cache glob missed (no dir under ~/.claude/plugins/cache/*/prompthud/)\" "
+        "echo \"prompthud: plugin cache glob missed under $cdir/plugins/cache/*/prompthud/\" "
         ">> /tmp/prompthud-debug.log 2>/dev/null;"
         " fi'"
     )

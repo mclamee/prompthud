@@ -28,8 +28,9 @@ import os
 import sys
 from pathlib import Path
 
-SETTINGS = Path.home() / ".claude" / "settings.json"
-BASE_SCRIPT = Path.home() / ".claude" / "prompthud" / "base.sh"
+_CLAUDE_DIR = Path(os.environ.get("CLAUDE_CONFIG_DIR") or (Path.home() / ".claude"))
+SETTINGS = _CLAUDE_DIR / "settings.json"
+BASE_SCRIPT = _CLAUDE_DIR / "prompthud" / "base.sh"
 SENTINEL = ": prompthud-wrap"  # `:` is the shell no-op; arg is ignored but stays in the command string for detection
 
 # Any of these substrings means the statusLine is already a prompthud wrap.
@@ -41,7 +42,10 @@ KNOWN_SENTINELS = (
 
 
 def _plug_glob() -> str:
-    return '$(ls -td "$HOME"/.claude/plugins/cache/*/prompthud/*/ 2>/dev/null | head -1)'
+    return (
+        '$(ls -td "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/*/prompthud/*/ '
+        '2>/dev/null | head -1)'
+    )
 
 
 def _build_wrapped_command(lines_arg: str = "auto") -> str:

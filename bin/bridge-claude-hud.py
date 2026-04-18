@@ -21,18 +21,18 @@ arg rather than appending duplicates.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
 
-SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
+SETTINGS_PATH = Path(os.environ.get("CLAUDE_CONFIG_DIR") or (Path.home() / ".claude")) / "settings.json"
 
 
 def _prompthud_label_cmd() -> str:
     """Best-effort path to the installed prompthud label command."""
     # When running as `/prompthud:bridge-claude-hud`, Claude Code sets
     # CLAUDE_PLUGIN_ROOT for us.  Otherwise we walk up from this file.
-    import os
     root = os.environ.get("CLAUDE_PLUGIN_ROOT")
     if not root:
         root = str(Path(__file__).resolve().parent.parent)

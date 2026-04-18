@@ -13,7 +13,6 @@ Subcommands:
 from __future__ import annotations
 
 import argparse
-import fcntl
 import json
 import os
 import re
@@ -25,14 +24,22 @@ import unicodedata
 from datetime import datetime
 from typing import List, Optional, Tuple
 
+try:
+    import fcntl  # POSIX-only; Windows falls back to no-op locking.
+    _HAS_FCNTL = True
+except ImportError:
+    fcntl = None  # type: ignore
+    _HAS_FCNTL = False
+
 # ──────────────────────────────────────────────────────────────────────────────
-# Paths
+# Paths — honour CLAUDE_CONFIG_DIR to match Claude Code / claude-hud conventions.
 # ──────────────────────────────────────────────────────────────────────────────
 HOME = os.path.expanduser("~")
-LOG_DIR = os.path.join(HOME, ".claude", "prompthud")
+CLAUDE_DIR = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(HOME, ".claude")
+LOG_DIR = os.path.join(CLAUDE_DIR, "prompthud")
 # Legacy path from when the plugin was called claude-session-explorer.
-LEGACY_LOG_DIR = os.path.join(HOME, ".claude", "session-explorer")
-HISTORY_FILE = os.path.join(HOME, ".claude", "history.jsonl")
+LEGACY_LOG_DIR = os.path.join(CLAUDE_DIR, "session-explorer")
+HISTORY_FILE = os.path.join(CLAUDE_DIR, "history.jsonl")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # ANSI (used only by `render`)
@@ -335,11 +342,14 @@ def cmd_log(_args: argparse.Namespace) -> int:
 
     # Hold an exclusive file lock across read-tail + append so two concurrent
     # UserPromptSubmit hook invocations can't both pass dedup and double-write.
+    # Windows lacks fcntl; race window is very narrow there, dedup still catches
+    # the common case since we read-then-append within a single syscall pair.
     with open(log_path, "a+b") as f:
-        try:
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-        except OSError:
-            pass  # best-effort — proceed without a lock on exotic filesystems
+        if _HAS_FCNTL:
+            try:
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            except OSError:
+                pass  # best-effort — proceed without a lock on exotic filesystems
         f.seek(0, os.SEEK_END)
         size = f.tell()
         if size > 0:
