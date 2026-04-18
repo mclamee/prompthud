@@ -1,0 +1,18 @@
+{
+  "name": "prompthud-dev",
+  "description": "Development marketplace for prompthud",
+  "owner": {
+    "name": "Mclamee"
+  },
+  "plugins": [
+    {
+      "name": "prompthud",
+      "description": "HUD overlay for your Claude Code session prompts",
+      "version": "0.3.0",
+      "source": "./",
+      "author": {
+        "name": "Mclamee"
+      }
+    }
+  ]
+}

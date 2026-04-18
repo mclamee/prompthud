@@ -1,0 +1,12 @@
+{
+  "name": "prompthud",
+  "version": "0.3.0",
+  "description": "HUD overlay that shows every prompt you sent in the current Claude Code session, with the live one highlighted. Browse history without scrolling.",
+  "author": {
+    "name": "Mclamee"
+  },
+  "homepage": "https://github.com/mclamee/prompthud",
+  "repository": "https://github.com/mclamee/prompthud",
+  "license": "MIT",
+  "keywords": ["claude-code", "hud", "statusline", "prompts", "history"]
+}

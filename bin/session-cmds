@@ -1,0 +1,32 @@
+#!/bin/sh
+# POSIX shell wrapper for the session-cmds CLI.
+# Detects python3 and dispatches to the Python implementation.
+set -eu
+
+SCRIPT_PATH="$0"
+# Resolve symlinks to find actual script location
+while [ -L "$SCRIPT_PATH" ]; do
+    LINK=$(readlink "$SCRIPT_PATH")
+    case "$LINK" in
+        /*) SCRIPT_PATH="$LINK" ;;
+        *)  SCRIPT_PATH="$(dirname "$SCRIPT_PATH")/$LINK" ;;
+    esac
+done
+BIN_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+LIB_DIR="$BIN_DIR/../lib"
+CLI_MODULE="$LIB_DIR/session_cmds.py"
+
+if ! command -v python3 >/dev/null 2>&1; then
+    printf 'session-cmds: python3 not found in PATH.\n' >&2
+    printf '  macOS : xcode-select --install\n' >&2
+    printf '  Linux : install the python3 package (e.g. apt/dnf/pacman)\n' >&2
+    printf '  Other : https://www.python.org/downloads/\n' >&2
+    exit 127
+fi
+
+if [ ! -f "$CLI_MODULE" ]; then
+    printf 'session-cmds: CLI module missing at %s\n' "$CLI_MODULE" >&2
+    exit 2
+fi
+
+exec python3 "$CLI_MODULE" "$@"
