@@ -1,53 +1,79 @@
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 
-// Fake terminal shown when no real recording exists yet.
-// Simulates real prompthud packing: past prompts fill right-to-left, older
-// ones collapse into `(+N more)` when they'd overflow; the ▶ current prompt
-// is always pinned to the rightmost slot.
-//
-// Drop a real demo.mp4 into promo/public/ and set HAS_RECORDED_DEMO=true in
-// scenes/Demo.tsx to swap this out.
+// Fake terminal matching real prompthud behaviour:
+//   - past prompts pack right-to-left; overflow collapses into "(+K more)"
+//   - the ▶ current prompt is always the rightmost slot
+//   - consecutive identical prompts fold into a single "×N" entry — the
+//     display number tracks the most-recent occurrence so `show N` still
+//     addresses the last duplicate
 
+// Intentional duplicates to showcase the ×N folding on screen.
 const PROMPTS = [
   "fix the login redirect bug",
+  "fix the login redirect bug",         // dup → ×2
   "add jwt refresh token handling",
-  "debug session persistence issue",
+  "debug session persistence",
   "why is the cookie not being set",
+  "why is the cookie not being set",    // dup → ×2
+  "why is the cookie not being set",    // dup → ×3
   "add remember-me checkbox to form",
-  "test the logout flow end-to-end",
-  "handle expired refresh tokens gracefully",
-  "add rate limiting to auth middleware",
   "write integration tests for auth",
   "deploy staging and smoke test",
 ];
 
-// Pixel budget for the HUD row. Calibrated for a 1920px frame at fontSize 22.
-const HUD_CHAR_WIDTH = 12; // mono 22px ≈ 12px/char
-const HUD_TARGET_CHARS = 140; // ~ (1920 - 2*30 padding) / 12
-const MAX_CMD_CHARS = 30; // mirrors prompthud's max_cmd_width
+const HUD_TARGET_CHARS = 140;
+const MAX_CMD_CHARS = 30;
 
-// Pack past prompts right-to-left into the budget. Older entries that don't
-// fit become a single "(+N more)" token at the left.
+type Run = { lastIdx: number; text: string; count: number };
+
+function collapseRuns(visible: string[]): Run[] {
+  if (visible.length === 0) return [];
+  const runs: Run[] = [];
+  let curText = visible[0];
+  let curLastIdx = 0;
+  let curCount = 1;
+  for (let i = 1; i < visible.length; i++) {
+    if (visible[i] === curText) {
+      curLastIdx = i;
+      curCount += 1;
+    } else {
+      runs.push({ lastIdx: curLastIdx, text: curText, count: curCount });
+      curText = visible[i];
+      curLastIdx = i;
+      curCount = 1;
+    }
+  }
+  runs.push({ lastIdx: curLastIdx, text: curText, count: curCount });
+  return runs;
+}
+
+function trunc(s: string): string {
+  return s.length > MAX_CMD_CHARS ? s.slice(0, MAX_CMD_CHARS - 1) + "…" : s;
+}
+
 function packHud(visible: string[]) {
-  if (visible.length === 0) return { header: "", past: [] as { num: number; text: string }[], current: null as null | { num: number; text: string }, hidden: 0 };
   const total = visible.length;
-  const current = { num: total, text: visible[total - 1] };
+  const runs = collapseRuns(visible);
+  if (runs.length === 0) {
+    return { header: "", past: [] as Run[], current: null as null | Run, hidden: 0 };
+  }
+  const current = runs[runs.length - 1];
   const header = `☰ ${total}`;
   const sep = " | ";
 
-  const curPrefix = `▶ ${current.num}.`;
-  const curText = current.text.length > MAX_CMD_CHARS ? current.text.slice(0, MAX_CMD_CHARS - 1) + "…" : current.text;
-  const curSpan = curPrefix.length + curText.length;
+  const curSuf = current.count > 1 ? ` ×${current.count}` : "";
+  const curText = trunc(current.text);
+  const curSpan = `▶ ${current.lastIdx + 1}.`.length + curText.length + curSuf.length;
 
   let remaining = HUD_TARGET_CHARS - header.length - sep.length - curSpan;
-  const past: { num: number; text: string }[] = [];
+  const past: Run[] = [];
   let hidden = 0;
 
-  // Walk past prompts from newest backward; stop when adding one would overflow.
-  for (let i = total - 2; i >= 0; i--) {
-    const text = visible[i];
-    const shortText = text.length > MAX_CMD_CHARS ? text.slice(0, MAX_CMD_CHARS - 1) + "…" : text;
-    const piece = `${i + 1}.${shortText}`;
+  for (let i = runs.length - 2; i >= 0; i--) {
+    const r = runs[i];
+    const shortText = trunc(r.text);
+    const suf = r.count > 1 ? ` ×${r.count}` : "";
+    const piece = `${r.lastIdx + 1}.${shortText}${suf}`;
     const hiddenAfter = i;
     const tailCost = hiddenAfter > 0 ? ` (+${hiddenAfter} more)`.length : 0;
     const needed = sep.length + piece.length + tailCost;
@@ -56,21 +82,31 @@ function packHud(visible: string[]) {
       break;
     }
     remaining -= sep.length + piece.length;
-    past.unshift({ num: i + 1, text: shortText });
+    past.unshift({ lastIdx: r.lastIdx, text: shortText, count: r.count });
   }
-  return { header, past, current, hidden };
+  return { header, past, current: { ...current, text: curText }, hidden };
 }
 
 export const FakeTerminal: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Reveal prompts faster so all 10 appear by ~4s of the 15s demo.
-  const revealPerFrame = 2.5 / fps;
+  // ~1 prompt/sec so the viewer can register each change. All 10 reveal by
+  // ~9s of the 15s demo, leaving ~6s of settle time at the end.
+  const revealPerFrame = 1.1 / fps;
   const visibleCount = Math.min(PROMPTS.length, 1 + Math.floor(frame * revealPerFrame));
   const visible = PROMPTS.slice(0, visibleCount);
 
   const hudOpacity = interpolate(frame, [0, 20], [0, 1], { extrapolateRight: "clamp" });
+  // When the most-recent added prompt is a duplicate, pulse the ×N counter
+  // to draw the eye to the collapse behaviour.
+  const isDup = visibleCount >= 2 && visible[visibleCount - 1] === visible[visibleCount - 2];
+  const pulseStart = isDup ? (visibleCount - 1) * (fps / 1.1) : -1000;
+  const pulse = interpolate(frame - pulseStart, [0, 6, 18], [1, 1.25, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
   const { header, past, current, hidden } = packHud(visible);
 
   return (
@@ -111,7 +147,7 @@ export const FakeTerminal: React.FC = () => {
         </div>
       )}
 
-      {/* HUD row — greedy packing, current pinned right, overflow folds left. */}
+      {/* HUD row */}
       <div
         style={{
           opacity: hudOpacity,
@@ -133,18 +169,35 @@ export const FakeTerminal: React.FC = () => {
           <span style={{ color: "#64748b" }}> (+{hidden} more)</span>
         )}
         {past.map((p) => (
-          <span key={p.num}>
+          <span key={`${p.lastIdx}-${p.count}`}>
             <span style={{ color: "#475569" }}> | </span>
-            <span style={{ color: "#64748b" }}>{p.num}.</span>
+            <span style={{ color: "#64748b" }}>{p.lastIdx + 1}.</span>
             <span style={{ color: "#67e8f9" }}>{p.text}</span>
+            {p.count > 1 && (
+              <span style={{ color: "#f472b6", marginLeft: 6 }}>×{p.count}</span>
+            )}
           </span>
         ))}
         {current && (
           <span>
             <span style={{ color: "#475569" }}> | </span>
             <span style={{ color: "#86efac", fontWeight: 700 }}>
-              ▶ {current.num}.{current.text}
+              ▶ {current.lastIdx + 1}.{current.text}
             </span>
+            {current.count > 1 && (
+              <span
+                style={{
+                  color: "#f472b6",
+                  fontWeight: 700,
+                  marginLeft: 8,
+                  display: "inline-block",
+                  transform: `scale(${pulse})`,
+                  transformOrigin: "center",
+                }}
+              >
+                ×{current.count}
+              </span>
+            )}
           </span>
         )}
       </div>

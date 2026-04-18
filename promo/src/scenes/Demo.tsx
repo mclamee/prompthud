@@ -25,17 +25,20 @@ export const Demo: React.FC = () => {
         <FakeTerminal />
       )}
 
-      {/* Scripted callouts — compressed to land on moments in a 15s demo. */}
+      {/* Callouts timed to the FakeTerminal reveal pace (~1 prompt/sec):
+           - prompt 2 lands at 1s  → "▶ live prompt" points at the green row
+           - dup-3 lands at 6-7s   → "×N folds duplicates" lands on the ×3
+           - overflow kicks in ~9s → "(+N more)" explains the left fold      */}
       <Sequence from={FPS * 2} durationInFrames={FPS * 3}>
-        <Callout text="▶ live prompt" anchorX={0.55} anchorY={0.82} direction="up" />
+        <Callout text="▶ live prompt, always visible" anchorX={0.6} anchorY={0.82} direction="up" />
       </Sequence>
 
       <Sequence from={FPS * 6} durationInFrames={FPS * 3}>
-        <Callout text="full history, no scroll" anchorX={0.3} anchorY={0.82} direction="up" />
+        <Callout text="×N folds duplicates" anchorX={0.45} anchorY={0.82} direction="up" />
       </Sequence>
 
       <Sequence from={FPS * 10} durationInFrames={FPS * 3}>
-        <Callout text="×N folds duplicates" anchorX={0.45} anchorY={0.82} direction="up" />
+        <Callout text="(+K more) hides the tail" anchorX={0.22} anchorY={0.82} direction="up" />
       </Sequence>
     </AbsoluteFill>
   );
