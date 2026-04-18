@@ -6,3 +6,11 @@ __pycache__/
 /dist/
 /.vscode/
 /.idea/
+
+# promo (Remotion)
+promo/node_modules/
+promo/out/
+promo/.remotion/
+promo/public/demo.mp4
+promo/public/demo.mov
+promo/public/demo.gif

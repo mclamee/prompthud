@@ -1,0 +1,24 @@
+{
+  "name": "prompthud-promo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Remotion project for the prompthud promo video",
+  "scripts": {
+    "dev": "remotion studio",
+    "render": "remotion render Main out/prompthud-promo.mp4",
+    "render:gif": "remotion render Main out/prompthud-promo.gif --codec=gif",
+    "upgrade": "remotion upgrade"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "@remotion/shapes": "^4.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.5.0"
+  }
+}
