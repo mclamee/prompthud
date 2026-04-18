@@ -25,20 +25,31 @@ export const Demo: React.FC = () => {
         <FakeTerminal />
       )}
 
-      {/* Callouts timed to the FakeTerminal reveal pace (~1 prompt/sec):
-           - prompt 2 lands at 1s  → "▶ live prompt" points at the green row
-           - dup-3 lands at 6-7s   → "×N folds duplicates" lands on the ×3
-           - overflow kicks in ~9s → "(+N more)" explains the left fold      */}
-      <Sequence from={FPS * 2} durationInFrames={FPS * 3}>
+      {/* Callouts timed to the FakeTerminal reveal pace (~1.1 prompts/sec).
+           Story arc:   iterate → debug → finalize
+             ~1s   prompt 2 is a dup  → "▶ live prompt"
+             ~5s   ×3 lands           → "×N folds duplicates"
+             ~9s   overflow kicks in  → "(+K more) hides the tail"
+             ~12s  /commit lands      → "finish: /test → /review → /commit"  */}
+      <Sequence from={FPS * 1.5} durationInFrames={FPS * 2.5}>
         <Callout text="▶ live prompt, always visible" anchorX={0.6} anchorY={0.82} direction="up" />
       </Sequence>
 
-      <Sequence from={FPS * 6} durationInFrames={FPS * 3}>
+      <Sequence from={FPS * 5} durationInFrames={FPS * 2.5}>
         <Callout text="×N folds duplicates" anchorX={0.45} anchorY={0.82} direction="up" />
       </Sequence>
 
-      <Sequence from={FPS * 10} durationInFrames={FPS * 3}>
+      <Sequence from={FPS * 8.5} durationInFrames={FPS * 2.5}>
         <Callout text="(+K more) hides the tail" anchorX={0.22} anchorY={0.82} direction="up" />
+      </Sequence>
+
+      <Sequence from={FPS * 12} durationInFrames={FPS * 3}>
+        <Callout
+          text="wrap up: /test → /review → /commit"
+          anchorX={0.7}
+          anchorY={0.82}
+          direction="up"
+        />
       </Sequence>
     </AbsoluteFill>
   );

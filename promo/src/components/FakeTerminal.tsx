@@ -7,18 +7,20 @@ import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 //     display number tracks the most-recent occurrence so `show N` still
 //     addresses the last duplicate
 
-// Intentional duplicates to showcase the ×N folding on screen.
+// Three-act arc: iterate-on-bug → feature → finalize
+// The duplicates showcase ×N folding; the slash-command tail mirrors the
+// real "wrap up" moment every Claude Code session ends with.
 const PROMPTS = [
   "fix the login redirect bug",
-  "fix the login redirect bug",         // dup → ×2
+  "fix the login redirect bug",         // dup → ×2  (stuck on the same bug)
   "add jwt refresh token handling",
-  "debug session persistence",
   "why is the cookie not being set",
   "why is the cookie not being set",    // dup → ×2
   "why is the cookie not being set",    // dup → ×3
   "add remember-me checkbox to form",
-  "write integration tests for auth",
-  "deploy staging and smoke test",
+  "/test",                              // finalize phase begins
+  "/code-review",
+  "/commit",
 ];
 
 const HUD_TARGET_CHARS = 140;
@@ -172,7 +174,7 @@ export const FakeTerminal: React.FC = () => {
           <span key={`${p.lastIdx}-${p.count}`}>
             <span style={{ color: "#475569" }}> | </span>
             <span style={{ color: "#64748b" }}>{p.lastIdx + 1}.</span>
-            <span style={{ color: "#67e8f9" }}>{p.text}</span>
+            <span style={{ color: p.text.startsWith("/") ? "#fbbf24" : "#67e8f9" }}>{p.text}</span>
             {p.count > 1 && (
               <span style={{ color: "#f472b6", marginLeft: 6 }}>×{p.count}</span>
             )}
@@ -181,7 +183,12 @@ export const FakeTerminal: React.FC = () => {
         {current && (
           <span>
             <span style={{ color: "#475569" }}> | </span>
-            <span style={{ color: "#86efac", fontWeight: 700 }}>
+            <span
+              style={{
+                color: current.text.startsWith("/") ? "#fbbf24" : "#86efac",
+                fontWeight: 700,
+              }}
+            >
               ▶ {current.lastIdx + 1}.{current.text}
             </span>
             {current.count > 1 && (
