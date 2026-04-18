@@ -1,46 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 84" role="img" aria-label="promptHUD statusline example">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 130" role="img" aria-label="promptHUD statusline example">
   <style>
-    .bg    { fill: #0d1117; }
-    .code  { font-family: 'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace; font-size: 14px; }
-    .dim   { fill: #6e7681; }
-    .cyan  { fill: #67e8f9; }
-    .mag   { fill: #c084fc; font-weight: 700; }
-    .green { fill: #86efac; font-weight: 700; }
-    .red   { fill: #f87171; font-weight: 700; }
-    .pink  { fill: #f472b6; }
-    .slate { fill: #cbd5e1; }
-    .yellow{ fill: #facc15; }
-    .bar-f { fill: #86efac; }
-    .bar-e { fill: #2a2a3a; }
+    .bg     { fill: #0d1117; }
+    .code   { font-family: 'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace; font-size: 14px; }
+    .label  { font-family: -apple-system, 'Inter', system-ui, sans-serif; font-size: 11px; fill: #6e7681; }
+    .dim    { fill: #6e7681; }
+    .muted  { fill: #8b949e; }
+    .cyan   { fill: #67e8f9; }
+    .mag    { fill: #c084fc; font-weight: 700; }
+    .green  { fill: #86efac; font-weight: 700; }
+    .pink   { fill: #f472b6; }
+    .yellow { fill: #facc15; }
+    .bar-f  { fill: #86efac; }
+    .bar-e  { fill: #30363d; }
+    .rule   { stroke: #30363d; stroke-width: 1; }
   </style>
-  <rect class="bg" width="900" height="84" rx="8"/>
+  <rect class="bg" width="900" height="130" rx="8"/>
 
-  <!-- Row 1: model · project · ctx bar -->
-  <text class="code" x="16" y="28">
-    <tspan class="cyan">[Opus 4.7]</tspan>
-    <tspan class="dim"> │ </tspan>
-    <tspan class="yellow">dora</tspan>
-    <tspan class="mag"> git:(</tspan><tspan class="cyan">main*</tspan><tspan class="mag">)</tspan>
-    <tspan class="dim"> │ ctx </tspan>
-  </text>
-  <!-- context bar (4 filled + 6 dim blocks, 41%) -->
-  <g transform="translate(238, 17)">
-    <rect class="bar-f" x="0"  y="0" width="10" height="14"/>
-    <rect class="bar-f" x="11" y="0" width="10" height="14"/>
-    <rect class="bar-f" x="22" y="0" width="10" height="14"/>
-    <rect class="bar-f" x="33" y="0" width="10" height="14"/>
-    <rect class="bar-e" x="44" y="0" width="10" height="14"/>
-    <rect class="bar-e" x="55" y="0" width="10" height="14"/>
-    <rect class="bar-e" x="66" y="0" width="10" height="14"/>
-    <rect class="bar-e" x="77" y="0" width="10" height="14"/>
-    <rect class="bar-e" x="88" y="0" width="10" height="14"/>
-    <rect class="bar-e" x="99" y="0" width="10" height="14"/>
+  <!-- Claude Code input area — bracketed top+bottom like the real TUI -->
+  <line class="rule" x1="16" y1="12" x2="884" y2="12"/>
+  <text class="code muted" x="16" y="30">&gt; your next prompt here</text>
+  <rect x="166" y="19" width="8" height="14" fill="#a78bfa" opacity="0.8"/>
+  <text class="label" x="884" y="30" text-anchor="end">← Claude Code input</text>
+  <line class="rule" x1="16" y1="44" x2="884" y2="44"/>
+
+  <!-- promptHUD row 1: model · project(git) · ctx bar -->
+  <g class="code">
+    <text class="cyan"   x="16"  y="78">[Opus 4.7]</text>
+    <text class="dim"    x="110" y="78">│</text>
+    <text class="yellow" x="128" y="78">dora</text>
+    <text class="mag"    x="170" y="78">git:(</text>
+    <text class="cyan"   x="212" y="78">main*</text>
+    <text class="mag"    x="256" y="78">)</text>
+    <text class="dim"    x="274" y="78">│ ctx</text>
+    <!-- context bar at 41% -->
+    <g transform="translate(324, 68)">
+      <rect class="bar-f" x="0"   y="0" width="10" height="12"/>
+      <rect class="bar-f" x="11"  y="0" width="10" height="12"/>
+      <rect class="bar-f" x="22"  y="0" width="10" height="12"/>
+      <rect class="bar-f" x="33"  y="0" width="10" height="12"/>
+      <rect class="bar-e" x="44"  y="0" width="10" height="12"/>
+      <rect class="bar-e" x="55"  y="0" width="10" height="12"/>
+      <rect class="bar-e" x="66"  y="0" width="10" height="12"/>
+      <rect class="bar-e" x="77"  y="0" width="10" height="12"/>
+      <rect class="bar-e" x="88"  y="0" width="10" height="12"/>
+      <rect class="bar-e" x="99"  y="0" width="10" height="12"/>
+    </g>
+    <text class="green"  x="438" y="78">41%</text>
   </g>
-  <text class="code green" x="354" y="28">41%</text>
 
-  <!-- Row 2: HUD prompts row -->
-  <text class="code" x="16" y="60">
+  <!-- promptHUD row 2: prompts pack -->
+  <text class="code" x="16" y="108">
     <tspan class="mag">☰ 10</tspan><tspan class="dim"> (+3 more)</tspan>
     <tspan class="dim"> | </tspan>
     <tspan class="dim">7.</tspan><tspan class="cyan">debug token rotation…</tspan><tspan class="pink"> ×3</tspan>
@@ -51,4 +61,5 @@
     <tspan class="dim"> | </tspan>
     <tspan class="green">▶ 10./commit</tspan><tspan class="dim"> ⋯</tspan>
   </text>
+
 </svg>
