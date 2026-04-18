@@ -13,48 +13,48 @@ import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 // Drop a real demo.mp4 into promo/public/ and set HAS_RECORDED_DEMO=true in
 // scenes/Demo.tsx to swap this out for the real recording.
 
-// Progressive reveal — one feature per beat so viewers never see two new
-// HUD mechanics at once:
-//   beats 0-3  (~0-3s)   plain ascending prompts → learn the basic HUD
-//   beats 3-5  (~3-5s)   first duplicate lands → ×N folding appears
-//   beats 6-9  (~6-9s)   more prompts → overflow triggers (+K more)
-//   beats 7-9  (~7-9s)   slash commands → finalize arc
+// Progressive reveal — one feature per beat, and showing ×N TWICE so the
+// pattern becomes obvious ("oh, this happens every time the user retries"):
+//   beats 0-2  (~0-2s)   plain ascending prompts → learn the basic HUD
+//   beats 3-4  (~2.7-3.6s)  dup group A → first ×2 appearance
+//   beats 5-7  (~4.5-6.4s)  dup group B → second ×N, escalates to ×3
+//   beats 7-9  (~6.4-8.2s)  slash commands → finalize arc
+//                            + overflow triggers (+K more) along the way
 const PROMPTS = [
-  "fix the login redirect bug",           // 0 — baseline
-  "add jwt refresh token handling",       // 1
-  "debug cookie persistence across tabs", // 2
-  "why is the cookie not being set",      // 3
-  "why is the cookie not being set",      // 4 → ×2 first appearance
-  "why is the cookie not being set",      // 5 → ×3
-  "add remember-me checkbox to form",     // 6
-  "/test",                                // 7 — finalize phase begins
-  "/code-review",                         // 8
-  "/commit",                              // 9
+  "fix the login redirect bug",            // 0 — baseline
+  "add jwt refresh token handling",        // 1
+  "why is the cookie not being set",       // 2
+  "why is the cookie not being set",       // 3 → GROUP A ×2
+  "debug token rotation race",             // 4 — new topic
+  "debug token rotation race",             // 5 → GROUP B starts ×2
+  "debug token rotation race",             // 6 → GROUP B ×3
+  "/test",                                 // 7 — finalize begins
+  "/code-review",                          // 8
+  "/commit",                               // 9
 ];
 
-// Per-prompt fake response lines. Aligned with PROMPTS index so the
-// streaming "context" reads like a plausible dev session.
+// Per-prompt fake response lines — aligned with the new PROMPTS order.
 const RESPONSE_POOL: string[][] = [
   // 0 fix login redirect
   ["Reading src/auth/middleware.ts…", "Found redirect on line 42", "Patching: res.redirect(returnTo)", "Running auth.spec.ts…", "✓ 3 passed"],
   // 1 add jwt refresh
   ["Edit src/auth/refresh.ts (+28 −4)", "Generated types/refresh.d.ts", "+ export async function rotate(token: string)", "+   const claims = await verify(token);", "✓ rotate.spec.ts 8 passed"],
-  // 2 debug cookie persistence across tabs
-  ["Reading src/storage/session-store.ts…", "SessionStorage isolates tabs by default", "Switching to localStorage with channel broadcast", "Edit src/storage/broadcast.ts (+18 −0)", "✓ multi-tab.spec.ts passes"],
-  // 3 why is the cookie not being set
-  ["Inspecting Set-Cookie header in response…", "Header present but SameSite=Strict blocks cross-site", "Reading src/server/session.ts…", "Suggestion: change to SameSite=Lax", "Applying…"],
-  // 4 dup — different angle
-  ["Still not working — checking production nginx config", "Reading infra/nginx.conf…", "proxy_cookie_path rewrites strip domain", "Patching nginx rules", "Reload: nginx -s reload"],
-  // 5 dup ×3 — found it
-  ["One more try — checking Safari ITP behaviour", "Third-party cookie policy blocks load", "Reading src/auth/third-party.ts…", "Falling back to first-party fetch", "✓ Safari now receives cookie"],
-  // 6 add remember-me checkbox
-  ["Edit src/auth/login-form.tsx (+14 −2)", "+ <input type='checkbox' name='remember' />", "+ const remember = formData.get('remember')", "Bumping session TTL when remember=true", "✓ e2e remember.spec.ts passes"],
+  // 2 why cookie not set — first try
+  ["Inspecting Set-Cookie header in response…", "Header present but SameSite=Strict blocks cross-site", "Reading src/server/session.ts…", "Changing to SameSite=Lax", "Redeploying…"],
+  // 3 why cookie dup — different angle
+  ["Still reproducing — checking nginx config", "Reading infra/nginx.conf…", "proxy_cookie_path rewrites strip domain", "Patching nginx rules + reload", "✓ cookie now persisted across requests"],
+  // 4 debug token rotation race — first pass
+  ["Reading src/auth/refresh.ts…", "Two concurrent requests both call rotate()", "One invalidates the other mid-flight", "Logging entry/exit timestamps…", "Reproduced 3/10 runs"],
+  // 5 debug token rotation dup — mutex attempt
+  ["Trying a mutex around the rotate call…", "Edit src/auth/refresh.ts (+12 −3)", "+ const unlock = await mu.acquire();", "Running stress.spec.ts…", "✗ deadlock after 200 iterations"],
+  // 6 debug token rotation dup ×3 — final fix
+  ["Rethinking — use idempotent token IDs instead", "Edit src/auth/refresh.ts (+18 −8)", "+ if (tokenId === lastIssued) return cached;", "Running stress.spec.ts…", "✓ 10/10 runs pass"],
   // 7 /test
-  ["$ pnpm test", "  auth.spec.ts    ✓ 12 passed", "  session.spec.ts ✓ 8 passed", "  remember.spec.ts ✓ 3 passed", "Tests: 23 passed, 0 failed"],
+  ["$ pnpm test", "  auth.spec.ts     ✓ 12 passed", "  refresh.spec.ts  ✓ 8 passed", "  stress.spec.ts   ✓ 4 passed", "Tests: 24 passed, 0 failed"],
   // 8 /code-review
-  ["Reviewing diff across 6 files…", "src/auth/middleware.ts   +4 −2", "src/auth/refresh.ts      +28 −4", "src/auth/login-form.tsx  +14 −2", "LGTM — ready to ship"],
+  ["Reviewing diff across 5 files…", "src/auth/middleware.ts   +4 −2", "src/auth/refresh.ts      +46 −12", "infra/nginx.conf         +3 −1", "LGTM — ready to ship"],
   // 9 /commit
-  ["$ git add -A && git commit", "[main a1b2c3d] feat(auth): refresh + remember-me", " 6 files changed, 72 insertions(+), 12 deletions(-)", "$ git push", "Pushed to origin/main"],
+  ["$ git add -A && git commit", "[main a1b2c3d] feat(auth): refresh + token race fix", " 5 files changed, 61 insertions(+), 15 deletions(-)", "$ git push", "Pushed to origin/main"],
 ];
 
 const LINES_PER_SEC = 5.5; // matches 1.1 prompts/s × ~5 lines each
