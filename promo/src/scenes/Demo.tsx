@@ -45,7 +45,7 @@ export const Demo: React.FC = () => {
 
       <Sequence from={FPS * 12} durationInFrames={FPS * 3}>
         <Callout
-          text="wrap up: /test → /review → /commit"
+          text="every prompt preserved, even /commit"
           anchorX={0.7}
           anchorY={0.82}
           direction="up"

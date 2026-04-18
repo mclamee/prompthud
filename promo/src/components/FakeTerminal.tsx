@@ -203,7 +203,7 @@ export const FakeTerminal: React.FC = () => {
                   style={{
                     height: LINE_HEIGHT,
                     lineHeight: `${LINE_HEIGHT}px`,
-                    color: line.text.startsWith("/") ? "#fbbf24" : "#a78bfa",
+                    color: "#a78bfa",
                     fontWeight: 600,
                   }}
                 >
@@ -232,7 +232,7 @@ export const FakeTerminal: React.FC = () => {
         style={{
           padding: "14px 30px",
           borderTop: "1px solid #1e1e2a",
-          color: typedPrompt.startsWith("/") ? "#fbbf24" : "#64748b",
+          color: "#64748b",
           minHeight: 50,
           opacity: 0.55,
         }}
@@ -261,14 +261,14 @@ export const FakeTerminal: React.FC = () => {
           <span key={`${p.lastIdx}-${p.count}`}>
             <span style={{ color: "#475569" }}> | </span>
             <span style={{ color: "#64748b" }}>{p.lastIdx + 1}.</span>
-            <span style={{ color: p.text.startsWith("/") ? "#fbbf24" : "#67e8f9" }}>{p.text}</span>
+            <span style={{ color: "#67e8f9" }}>{p.text}</span>
             {p.count > 1 && <span style={{ color: "#f472b6", marginLeft: 6 }}>×{p.count}</span>}
           </span>
         ))}
         {current && (
           <span>
             <span style={{ color: "#475569" }}> | </span>
-            <span style={{ color: current.text.startsWith("/") ? "#fbbf24" : "#86efac", fontWeight: 700 }}>
+            <span style={{ color: "#86efac", fontWeight: 700 }}>
               ▶ {current.lastIdx + 1}.{current.text}
             </span>
             {current.count > 1 && (
