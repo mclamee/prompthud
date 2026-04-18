@@ -248,11 +248,14 @@ export const FakeTerminal: React.FC = () => {
         </div>
       </div>
 
-      {/* Input line — also muted; it's context, not the hero. */}
+      {/* Input line — bracketed by thin lines top & bottom so it reads
+         like the real Claude Code input row (two horizontal separators
+         around the › prompt). Still dimmed; it's context, not the hero. */}
       <div
         style={{
           padding: "14px 30px",
-          borderTop: "1px solid #1e1e2a",
+          borderTop: "1px solid #2a2a3a",
+          borderBottom: "1px solid #2a2a3a",
           color: "#64748b",
           minHeight: 50,
           opacity: 0.55,
