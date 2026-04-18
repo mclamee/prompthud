@@ -13,32 +13,47 @@ import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 // Drop a real demo.mp4 into promo/public/ and set HAS_RECORDED_DEMO=true in
 // scenes/Demo.tsx to swap this out for the real recording.
 
-// Three-act arc: iterate on bug → debug → finalize
+// Progressive reveal — one feature per beat so viewers never see two new
+// HUD mechanics at once:
+//   beats 0-3  (~0-3s)   plain ascending prompts → learn the basic HUD
+//   beats 3-5  (~3-5s)   first duplicate lands → ×N folding appears
+//   beats 6-9  (~6-9s)   more prompts → overflow triggers (+K more)
+//   beats 7-9  (~7-9s)   slash commands → finalize arc
 const PROMPTS = [
-  "fix the login redirect bug",
-  "fix the login redirect bug",         // ×2
-  "add jwt refresh token handling",
-  "why is the cookie not being set",
-  "why is the cookie not being set",    // ×2
-  "why is the cookie not being set",    // ×3
-  "add remember-me checkbox to form",
-  "/test",
-  "/code-review",
-  "/commit",
+  "fix the login redirect bug",           // 0 — baseline
+  "add jwt refresh token handling",       // 1
+  "debug cookie persistence across tabs", // 2
+  "why is the cookie not being set",      // 3
+  "why is the cookie not being set",      // 4 → ×2 first appearance
+  "why is the cookie not being set",      // 5 → ×3
+  "add remember-me checkbox to form",     // 6
+  "/test",                                // 7 — finalize phase begins
+  "/code-review",                         // 8
+  "/commit",                              // 9
 ];
 
-// Per-prompt fake response lines. Deterministic so renders are reproducible.
-// Feel: log lines, code diff, Read/Edit tool output, test summary.
+// Per-prompt fake response lines. Aligned with PROMPTS index so the
+// streaming "context" reads like a plausible dev session.
 const RESPONSE_POOL: string[][] = [
-  ["Reading src/auth/middleware.ts…", "Found redirect on line 42", "Patching: res.redirect(returnTo)", "Running tests…", "✓ 3 passed"],
-  ["Still reproducing — trace says cookie domain mismatch", "Reading src/config/cookies.ts…", "Domain set to .local — missing in prod env", "Adding COOKIE_DOMAIN override", "✓ redeployed"],
-  ["Edit src/auth/refresh.ts (+28 −4)", "Generated types/refresh.d.ts", "+ export async function rotate(token: string)", "+   const claims = await verify(token);", "Running auth.spec.ts → 12 passed"],
+  // 0 fix login redirect
+  ["Reading src/auth/middleware.ts…", "Found redirect on line 42", "Patching: res.redirect(returnTo)", "Running auth.spec.ts…", "✓ 3 passed"],
+  // 1 add jwt refresh
+  ["Edit src/auth/refresh.ts (+28 −4)", "Generated types/refresh.d.ts", "+ export async function rotate(token: string)", "+   const claims = await verify(token);", "✓ rotate.spec.ts 8 passed"],
+  // 2 debug cookie persistence across tabs
+  ["Reading src/storage/session-store.ts…", "SessionStorage isolates tabs by default", "Switching to localStorage with channel broadcast", "Edit src/storage/broadcast.ts (+18 −0)", "✓ multi-tab.spec.ts passes"],
+  // 3 why is the cookie not being set
   ["Inspecting Set-Cookie header in response…", "Header present but SameSite=Strict blocks cross-site", "Reading src/server/session.ts…", "Suggestion: change to SameSite=Lax", "Applying…"],
-  ["Still failing — checking production nginx config", "Reading infra/nginx.conf…", "proxy_cookie_path rewrites strip domain", "Patching nginx rules", "Reload: nginx -s reload"],
-  ["One more iteration — checking Safari ITP behaviour", "Third-party cookie policy blocks load", "Reading src/auth/third-party.ts…", "Falling back to first-party fetch", "✓ Safari now receives cookie"],
+  // 4 dup — different angle
+  ["Still not working — checking production nginx config", "Reading infra/nginx.conf…", "proxy_cookie_path rewrites strip domain", "Patching nginx rules", "Reload: nginx -s reload"],
+  // 5 dup ×3 — found it
+  ["One more try — checking Safari ITP behaviour", "Third-party cookie policy blocks load", "Reading src/auth/third-party.ts…", "Falling back to first-party fetch", "✓ Safari now receives cookie"],
+  // 6 add remember-me checkbox
   ["Edit src/auth/login-form.tsx (+14 −2)", "+ <input type='checkbox' name='remember' />", "+ const remember = formData.get('remember')", "Bumping session TTL when remember=true", "✓ e2e remember.spec.ts passes"],
+  // 7 /test
   ["$ pnpm test", "  auth.spec.ts    ✓ 12 passed", "  session.spec.ts ✓ 8 passed", "  remember.spec.ts ✓ 3 passed", "Tests: 23 passed, 0 failed"],
+  // 8 /code-review
   ["Reviewing diff across 6 files…", "src/auth/middleware.ts   +4 −2", "src/auth/refresh.ts      +28 −4", "src/auth/login-form.tsx  +14 −2", "LGTM — ready to ship"],
+  // 9 /commit
   ["$ git add -A && git commit", "[main a1b2c3d] feat(auth): refresh + remember-me", " 6 files changed, 72 insertions(+), 12 deletions(-)", "$ git push", "Pushed to origin/main"],
 ];
 
