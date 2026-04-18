@@ -3,7 +3,7 @@
   <style>
     .bg     { fill: #0d1117; }
     .code   { font-family: 'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace; font-size: 14px; }
-    .label  { font-family: -apple-system, 'Inter', system-ui, sans-serif; font-size: 11px; fill: #6e7681; }
+    .label  { font-family: -apple-system, 'Inter', system-ui, sans-serif; font-size: 12px; fill: #8b949e; }
     .dim    { fill: #6e7681; }
     .muted  { fill: #8b949e; }
     .cyan   { fill: #67e8f9; }

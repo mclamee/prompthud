@@ -541,6 +541,12 @@ def _context_bar(pct: float, width: int = 10) -> str:
     return f"{color}{'█' * filled}{DIM}{'░' * (width - filled)}{RESET}"
 
 
+# Minimum cells reserved per past-run text (after prefix + ×N suffix). Kept as
+# a shared constant so _pack_cmds_into_width and _pack_cmds_two_line can't
+# drift apart on this threshold.
+_MIN_CMD_WIDTH = 8
+
+
 def _run_suffix(count: int) -> str:
     """Plain-text `×N` suffix (empty when run of 1)."""
     return f" \u00d7{count}" if count > 1 else ""
@@ -614,13 +620,15 @@ def _pack_cmds_two_line(
         int_lead_plain = f"{INTERRUPTED_GLYPH}" if is_interrupted else ""
         prefix_p = f"{num}."
         prefix_p_w = _visual_width(int_lead_plain) + _visual_width(prefix_p) + _visual_width(suf_i)
-        hidden_runs_if_stop = i
-        hidden_tail_w = _visual_width(f" (+{hidden_runs_if_stop} more)") if hidden_runs_if_stop > 0 else 0
-        needed = sep_width + prefix_p_w + 8 + hidden_tail_w
+        # If we stop here, this piece plus all older ones become hidden.
+        # That means hidden_runs = i + 1, not i. Budget the worst-case label width.
+        hidden_runs_if_stop = i + 1
+        hidden_tail_w = _visual_width(f" (+{hidden_runs_if_stop} more)")
+        needed = sep_width + prefix_p_w + _MIN_CMD_WIDTH + hidden_tail_w
         if remaining < needed:
             break
         budget = min(max_cmd_width, remaining - sep_width - prefix_p_w - hidden_tail_w)
-        if budget < 8:
+        if budget < _MIN_CMD_WIDTH:
             break
         short = _truncate_to_width(text_clean, budget)
         if is_interrupted:
@@ -646,7 +654,7 @@ def _pack_cmds_two_line(
 def _pack_cmds_into_width(
     cmds: List[Command],
     max_width: int,
-    min_cmd_width: int = 8,
+    min_cmd_width: int = _MIN_CMD_WIDTH,
     max_cmd_width: int = 40,
     states: Optional[Dict[int, str]] = None,
 ) -> str:
@@ -695,8 +703,10 @@ def _pack_cmds_into_width(
         int_lead_plain = f"{INTERRUPTED_GLYPH}" if is_interrupted else ""
         prefix_p = f"{num}."
         prefix_p_w = _visual_width(int_lead_plain) + _visual_width(prefix_p) + _visual_width(suf_i)
-        hidden_runs_if_stop = i
-        tail_if_stop = _visual_width(f" (+{hidden_runs_if_stop} more)") if hidden_runs_if_stop > 0 else 0
+        # If we stop here, this piece plus all older ones become hidden.
+        # hidden_runs = i + 1, not i — reserve for the worst-case label width.
+        hidden_runs_if_stop = i + 1
+        tail_if_stop = _visual_width(f" (+{hidden_runs_if_stop} more)")
         needed_min = sep_width + prefix_p_w + min_cmd_width
         if remaining - needed_min < tail_if_stop:
             break

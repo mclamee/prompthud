@@ -2,7 +2,7 @@
 
 **Know every Claude Code session at a glance.**
 
-<video src="https://github.com/mclamee/prompthud/releases/download/v0.4.0/prompthud-promo.mp4" controls muted loop width="100%">
+<video src="https://github.com/mclamee/prompthud/releases/latest/download/prompthud-promo.mp4" controls muted loop width="100%">
   Your browser can't play the inline video —
   <a href="https://github.com/mclamee/prompthud/releases/latest">download the 28s promo</a>.
 </video>
@@ -33,7 +33,7 @@ glob-based statusline command so plugin upgrades don't break the path.
 | Command | What it does |
 |---------|--------------|
 | `/prompthud:setup` | Install the prompthud statusline into `~/.claude/settings.json` |
-| `/prompthud:wrap-claude-hud` | Wrap any existing statusLine so the prompts row prints below it (treats the base as a black box) |
+| `/prompthud:bridge-claude-hud` | Bridge any existing statusLine (claude-hud, etc.) so the prompts row prints below it (treats the base as a black box) |
 
 ## Configuration
 
@@ -47,12 +47,12 @@ Set as env-prefix on the statusLine command in `~/.claude/settings.json`:
 
 ## Running alongside another statusline plugin
 
-Claude Code's `statusLine` slot takes one command. Use `/prompthud:wrap-claude-hud` after
+Claude Code's `statusLine` slot takes one command. Use `/prompthud:bridge-claude-hud` after
 whatever other setup you already ran:
 
 ```
 /claude-hud:setup           # or any other statusline plugin's setup
-/prompthud:wrap-claude-hud
+/prompthud:bridge-claude-hud
 ```
 
 It captures the current `statusLine.command` string verbatim into
@@ -61,8 +61,8 @@ first and the prompts row second. We treat the base as a **black box** — no de
 on paths, runtimes, or internal APIs. Works for any statusline plugin whose command
 reads Claude Code's JSON from stdin and prints to stdout.
 
-Trade-off: uses an extra row. Re-running the upstream setup overwrites the wrap;
-re-run `/prompthud:wrap-claude-hud` to re-capture.
+Trade-off: uses an extra row. Re-running the upstream setup overwrites the bridge;
+re-run `/prompthud:bridge-claude-hud` to re-capture.
 
 ### Revert
 
