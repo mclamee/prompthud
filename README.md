@@ -2,7 +2,7 @@
 
 **Know every Claude Code session at a glance.**
 
-<video src="https://github.com/mclamee/prompthud/releases/download/v0.3.0/prompthud-promo.mp4" controls muted loop width="100%">
+<video src="https://github.com/mclamee/prompthud/releases/download/v0.4.0/prompthud-promo.mp4" controls muted loop width="100%">
   Your browser can't play the inline video —
   <a href="https://github.com/mclamee/prompthud/releases/latest">download the 28s promo</a>.
 </video>
